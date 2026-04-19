@@ -25,17 +25,9 @@ async function handleSearch(e) {
     setDetail(null);
     try {
       const res = await fetch(`/api/companies/search?q=${encodeURIComponent(query.trim())}`);
-      );
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "OpenCorporates error");
-      const results = (data.results?.companies || []).map(c => ({
-        name: c.company.name,
-        company_number: c.company.company_number,
-        current_status: c.company.current_status,
-        incorporation_date: c.company.incorporation_date,
-        company_type: c.company.company_type,
-      }));
-      setResults(results);
+      if (data.error) throw new Error(data.error);
+      setResults(data.results || []);
     } catch (err) {
       setError("Search failed. Please try again.");
     } finally {
