@@ -16,7 +16,7 @@ export default function BRNLookup() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  async function handleSearch(e) {
+async function handleSearch(e) {
     e.preventDefault();
     if (!query.trim()) return;
     setLoading(true);
@@ -24,10 +24,19 @@ export default function BRNLookup() {
     setResults(null);
     setDetail(null);
     try {
-      const res = await fetch(`/api/companies/search?q=${encodeURIComponent(query.trim())}`);
+      const res = await fetch(
+        `https://api.opencorporates.com/v0.4/companies/search?q=${encodeURIComponent(query.trim())}&jurisdiction_code=mu&per_page=10`
+      );
       const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      setResults(data.results || []);
+      if (!res.ok) throw new Error(data?.error || "OpenCorporates error");
+      const results = (data.results?.companies || []).map(c => ({
+        name: c.company.name,
+        company_number: c.company.company_number,
+        current_status: c.company.current_status,
+        incorporation_date: c.company.incorporation_date,
+        company_type: c.company.company_type,
+      }));
+      setResults(results);
     } catch (err) {
       setError("Search failed. Please try again.");
     } finally {
