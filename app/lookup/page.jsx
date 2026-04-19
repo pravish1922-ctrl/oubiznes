@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Home, Search, ExternalLink, RotateCcw } from "lucide-react";
 
 const NAVY = "#0A1628";
-const CORAL = "#E94F37";
+const CORAL = "0D9488";
 const GOLD = "#F4C430";
 const GREEN = "#0F7B3F";
 const BLUE = "#1E5AA0";
@@ -121,7 +121,7 @@ export default function BRNLookup() {
         </form>
 
         {error && (
-          <div style={{ background: "#FFF8F0", border: "1px solid #E94F37", borderRadius: 12, padding: "20px 24px", marginBottom: 20 }}>
+          <div style={{ background: "#FFF8F0", border: "1px solid 0D9488", borderRadius: 12, padding: "20px 24px", marginBottom: 20 }}>
             {error === "unavailable" ? (
               <>
                 <p style={{ fontWeight: 700, color: NAVY, marginBottom: 6, fontSize: 15 }}>
@@ -140,7 +140,7 @@ export default function BRNLookup() {
                 </a>
               </>
             ) : (
-              <p style={{ color: "#E94F37", fontSize: 14, fontWeight: 600 }}>
+              <p style={{ color: "0D9488", fontSize: 14, fontWeight: 600 }}>
                 Search failed. Please try again.
               </p>
             )}
