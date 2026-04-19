@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Home, RotateCcw, Copy, Check } from "lucide-react";
 
 const NAVY = "#0A1628";
-const CORAL = "#E94F37";
+const CORAL = "#0D9488";
 const GOLD = "#F4C430";
 const GREEN = "#0F7B3F";
 const BLUE = "#1E5AA0";
