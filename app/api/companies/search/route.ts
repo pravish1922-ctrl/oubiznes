@@ -6,10 +6,9 @@ export async function GET(request) {
   if (!q) return NextResponse.json({ error: 'Missing query' }, { status: 400 });
 
   try {
-    const res = await fetch(
-      `https://api.opencorporates.com/v0.4/companies/search?q=${encodeURIComponent(q)}&jurisdiction_code=mu&per_page=10`,
-      { next: { revalidate: 3600 } }
-    );
+   const apiKey = process.env.OPENCORPORATES_API_KEY;
+   const url = `https://api.opencorporates.com/v0.4/companies/search?q=${encodeURIComponent(q)}&jurisdiction_code=mu&per_page=10${apiKey ? `&api_token=${apiKey}` : ''}`;
+   const res = await fetch(url, { next: { revalidate: 3600 } });
 
     const data = await res.json();
 
