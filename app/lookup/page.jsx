@@ -17,23 +17,28 @@ export default function BRNLookup() {
   const [error, setError] = useState("");
 
 async function handleSearch(e) {
-    e.preventDefault();
-    if (!query.trim()) return;
-    setLoading(true);
-    setError("");
-    setResults(null);
-    setDetail(null);
-    try {
-      const res = await fetch(`/api/companies/search?q=${encodeURIComponent(query.trim())}`);
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
+  e.preventDefault();
+  if (!query.trim()) return;
+  setLoading(true);
+  setError("");
+  setResults(null);
+  setDetail(null);
+  try {
+    const res = await fetch(`/api/companies/search?q=${encodeURIComponent(query.trim())}`);
+    const data = await res.json();
+    if (data.unavailable) {
+      setError("unavailable");
+    } else if (data.error) {
+      setError("failed");
+    } else {
       setResults(data.results || []);
-    } catch (err) {
-      setError("Search failed. Please try again.");
-    } finally {
-      setLoading(false);
     }
+  } catch {
+    setError("failed");
+  } finally {
+    setLoading(false);
   }
+}
 
   async function handleDetail(number) {
     setLoading(true);
