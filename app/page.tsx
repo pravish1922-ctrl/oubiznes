@@ -176,7 +176,34 @@ export default function Home() {
             </div>
           </div>
         ))}
-
+        {/* Email capture */}
+        <div style={{ background: "#fff", border: "1.5px solid #e5e7eb", borderRadius: 14, padding: "20px 24px", marginBottom: 24 }}>
+          <p style={{ fontSize: 14, fontWeight: 700, color: NAVY, marginBottom: 4 }}>
+            Stay updated — free tools, new features, grant alerts.
+          </p>
+          <p style={{ fontSize: 13, color: "#6b7280", marginBottom: 12 }}>
+            No spam. One email when something useful drops.
+          </p>
+          <form
+            action="https://formspree.io/f/maqabeqb"
+            method="POST"
+            style={{ display: "flex", gap: 8 }}
+          >
+            <input
+              type="email"
+              name="email"
+              placeholder="your@email.com"
+              required
+              style={{ flex: 1, padding: "11px 16px", borderRadius: 10, border: "1.5px solid #e5e7eb", fontSize: 14, color: NAVY, outline: "none" }}
+            />
+            <button
+              type="submit"
+              style={{ padding: "11px 20px", background: CORAL, color: "#fff", border: "none", borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: "pointer" }}
+            >
+              Notify me
+            </button>
+          </form>
+        </div>
         {/* Footer tagline */}
         <div style={{ textAlign: "center", paddingTop: 24, borderTop: "1px solid #e5e7eb" }}>
           <p style={{ fontSize: 14, color: "#9ca3af", fontStyle: "italic" }}>
