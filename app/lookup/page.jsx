@@ -16,29 +16,29 @@ export default function BRNLookup() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-async function handleSearch(e) {
-  e.preventDefault();
-  if (!query.trim()) return;
-  setLoading(true);
-  setError("");
-  setResults(null);
-  setDetail(null);
-  try {
-    const res = await fetch(`/api/companies/search?q=${encodeURIComponent(query.trim())}`);
-    const data = await res.json();
-    if (data.unavailable) {
-      setError("unavailable");
-    } else if (data.error) {
+  async function handleSearch(e) {
+    e.preventDefault();
+    if (!query.trim()) return;
+    setLoading(true);
+    setError("");
+    setResults(null);
+    setDetail(null);
+    try {
+      const res = await fetch(`/api/companies/search?q=${encodeURIComponent(query.trim())}`);
+      const data = await res.json();
+      if (data.unavailable) {
+        setError("unavailable");
+      } else if (data.error) {
+        setError("failed");
+      } else {
+        setResults(data.results || []);
+      }
+    } catch {
       setError("failed");
-    } else {
-      setResults(data.results || []);
+    } finally {
+      setLoading(false);
     }
-  } catch {
-    setError("failed");
-  } finally {
-    setLoading(false);
   }
-}
 
   async function handleDetail(number) {
     setLoading(true);
@@ -49,7 +49,7 @@ async function handleSearch(e) {
       if (data.error) throw new Error(data.error);
       setDetail(data);
     } catch (err) {
-      setError("Could not load company details.");
+      setError("failed");
     } finally {
       setLoading(false);
     }
@@ -95,7 +95,7 @@ async function handleSearch(e) {
           <span style={{ display: "block", color: CORAL }}>BRN Lookup</span>
         </h1>
         <p style={{ fontSize: 15, color: "#6b7280", marginBottom: 28 }}>
-          Search any Mauritius-registered company by name or BRN. Powered by the OpenCorporates database.
+          Search any Mauritius-registered company by name or BRN number.
         </p>
 
         <form onSubmit={handleSearch} style={{ display: "flex", gap: 10, marginBottom: 28 }}>
@@ -121,8 +121,29 @@ async function handleSearch(e) {
         </form>
 
         {error && (
-          <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 10, padding: "12px 16px", marginBottom: 20, color: "#dc2626", fontSize: 14 }}>
-            {error}
+          <div style={{ background: "#FFF8F0", border: "1px solid #E94F37", borderRadius: 12, padding: "20px 24px", marginBottom: 20 }}>
+            {error === "unavailable" ? (
+              <>
+                <p style={{ fontWeight: 700, color: NAVY, marginBottom: 6, fontSize: 15 }}>
+                  Live company search is temporarily unavailable.
+                </p>
+                <p style={{ color: "#6b7280", marginBottom: 12, fontSize: 14 }}>
+                  You can search directly on the official Mauritius company registry:
+                </p>
+                <a
+                  href="https://companies.govmu.org"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ display: "inline-flex", alignItems: "center", gap: 5, color: CORAL, fontWeight: 700, fontSize: 14, textDecoration: "underline" }}
+                >
+                  companies.govmu.org <ExternalLink size={13} />
+                </a>
+              </>
+            ) : (
+              <p style={{ color: "#E94F37", fontSize: 14, fontWeight: 600 }}>
+                Search failed. Please try again.
+              </p>
+            )}
           </div>
         )}
 
@@ -188,12 +209,9 @@ async function handleSearch(e) {
 
         <div style={{ marginTop: 28, background: "#f9fafb", borderRadius: 12, padding: "14px 18px" }}>
           <p style={{ fontSize: 13, color: "#6b7280" }}>
-            Data from{" "}
-            <a href="https://opencorporates.com/companies/mu" target="_blank" rel="noopener noreferrer" style={{ color: CORAL, textDecoration: "underline", display: "inline-flex", alignItems: "center", gap: 2 }}>
-              OpenCorporates (Mauritius) <ExternalLink size={11} />
-            </a>. For official CBRD records visit{" "}
-            <a href="https://cbrd.govmu.org/" target="_blank" rel="noopener noreferrer" style={{ color: CORAL, textDecoration: "underline", display: "inline-flex", alignItems: "center", gap: 2 }}>
-              cbrd.govmu.org <ExternalLink size={11} />
+            For official CBRD records visit{" "}
+            <a href="https://companies.govmu.org" target="_blank" rel="noopener noreferrer" style={{ color: CORAL, textDecoration: "underline", display: "inline-flex", alignItems: "center", gap: 2 }}>
+              companies.govmu.org <ExternalLink size={11} />
             </a>. 🇲🇺
           </p>
         </div>
