@@ -10,7 +10,14 @@ export async function GET(request) {
       `https://api.opencorporates.com/v0.4/companies/search?q=${encodeURIComponent(q)}&jurisdiction_code=mu&per_page=10`,
       { next: { revalidate: 3600 } }
     );
+
     const data = await res.json();
+
+    if (!res.ok) {
+      const msg = data?.error || `OpenCorporates error ${res.status}`;
+      return NextResponse.json({ error: msg, status: res.status }, { status: 502 });
+    }
+
     const results = (data.results?.companies || []).map(c => ({
       name: c.company.name,
       company_number: c.company.company_number,
@@ -18,8 +25,9 @@ export async function GET(request) {
       incorporation_date: c.company.incorporation_date,
       company_type: c.company.company_type,
     }));
+
     return NextResponse.json({ results });
   } catch (err) {
-    return NextResponse.json({ error: 'OpenCorporates API error' }, { status: 500 });
+    return NextResponse.json({ error: 'OpenCorporates unreachable' }, { status: 500 });
   }
 }
