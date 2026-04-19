@@ -65,7 +65,7 @@ export default function BRNLookup() {
   return (
     <div style={{ background: "linear-gradient(to bottom, #FAF5EE, #fff)", colorScheme: "light", minHeight: "100vh" }}>
       <div style={{ height: 8, display: "flex" }}>
-        <div style={{ flex: 1, background: CORAL }} />
+        <div style={{ flex: 1, background: "#CC0000" }} />
         <div style={{ flex: 1, background: BLUE }} />
         <div style={{ flex: 1, background: GOLD }} />
         <div style={{ flex: 1, background: GREEN }} />
