@@ -24,8 +24,7 @@ async function handleSearch(e) {
     setResults(null);
     setDetail(null);
     try {
-      const res = await fetch(
-        `https://api.opencorporates.com/v0.4/companies/search?q=${encodeURIComponent(query.trim())}&jurisdiction_code=mu&per_page=10`
+      const res = await fetch(`/api/companies/search?q=${encodeURIComponent(query.trim())}`);
       );
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "OpenCorporates error");
