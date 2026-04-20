@@ -2,6 +2,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Home, Download, RotateCcw, ExternalLink } from "lucide-react";
+import EmailCapture from "@/components/EmailCapture";
 
 const NAVY = "#0A1628";
 const CORAL = "#0D9488";
@@ -136,6 +137,7 @@ export default function ComplianceCalendar() {
             <button onClick={generateICS} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 13, color: "#fff", background: CORAL, border: "none", borderRadius: 8, padding: "6px 14px", cursor: "pointer", fontWeight: 600 }}>
               <Download size={14} /> Download .ics
             </button>
+            <EmailCapture source="/calendar" message="Get alerted when MRA deadlines or tax rules are updated." />
             <Link href="/" style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 13, color: NAVY, border: "1px solid #e5e7eb", borderRadius: 8, padding: "5px 12px", textDecoration: "none" }}>
               <Home size={14} /> Home
             </Link>
