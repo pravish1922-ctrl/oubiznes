@@ -2,6 +2,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Home, CheckCircle2, ExternalLink, RotateCcw, ChevronRight } from "lucide-react";
+import EmailCapture from "@/components/EmailCapture";
 
 const NAVY = "#0A1628";
 const CORAL = "#0D9488";
@@ -516,7 +517,9 @@ export default function GrantsFinder() {
             <p style={{ fontSize: 15, color: "#6b7280", marginBottom: 28 }}>
               Ranked by fit. Always verify eligibility with the agency before applying.
             </p>
-
+            
+            <EmailCapture source="/grants" message="Get alerts when new grants or schemes launch in Mauritius." />
+            
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               {results.map((scheme, idx) => (
                 <div key={scheme.id} style={{
