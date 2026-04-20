@@ -178,7 +178,7 @@ export default function VATCalculator() {
         <div style={{ background: "#f0f9ff", border: "1px solid #bae6fd", borderRadius: 12, padding: "16px 18px" }}>
           <h3 style={{ fontSize: 14, fontWeight: 700, color: NAVY, marginBottom: 8 }}>Key MRA VAT rules (2026)</h3>
           <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: "#374151", lineHeight: 1.8 }}>
-            <li>Register when annual turnover exceeds <strong>Rs 6 million</strong></li>
+            <li>Register when annual turnover exceeds <strong>Rs 3 million</strong></li>
             <li>File monthly — return due by <strong>20th of following month</strong></li>
             <li>File via{" "}
               <a href="https://eservices.mra.mu/" target="_blank" rel="noopener noreferrer" style={{ color: CORAL, textDecoration: "underline", display: "inline-flex", alignItems: "center", gap: 2 }}>
