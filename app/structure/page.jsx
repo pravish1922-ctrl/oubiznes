@@ -2,6 +2,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Home, ChevronRight, ChevronLeft, CheckCircle, AlertCircle } from "lucide-react";
+import EmailCapture from "@/components/EmailCapture";
 
 const NAVY = "#0A1628";
 const CORAL = "#0D9488";
@@ -337,6 +338,7 @@ export default function StructureAdvisor() {
                 Check grants I qualify for →
               </Link>
             </div>
+            <EmailCapture source="/structure" message="Get notified when registration fees or business laws change." />
             <button onClick={restart} style={{ width: "100%", padding: "13px", background: "none", color: NAVY, border: "1.5px solid #e5e7eb", borderRadius: 12, fontWeight: 600, fontSize: 14, cursor: "pointer" }}>
               Start over with different answers
             </button>
