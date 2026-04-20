@@ -194,7 +194,9 @@ export default function PAYECalculator() {
           </p>
         </div>
       </div>
-      <EmailCapture source="/paye" message="Get notified when PAYE brackets or CSG rates are updated." />
+      <<div style={{ maxWidth: 700, margin: "0 auto", padding: "0 20px" }}>
+          <EmailCapture source="/paye" message="Get notified when PAYE brackets or CSG rates are updated." />
+      </div>
       <footer className="bg-white border-t border-gray-200" style={{ padding: "16px 24px", textAlign: "center" }}>
         <p style={{ fontSize: 13, color: "#9ca3af" }}>
           © 2026 OuBiznes.mu · Not tax advice ·{" "}
