@@ -23,7 +23,7 @@ const SCHEMES = [
     maxTurnover: 100000000,
     registered: true,
     desc: "Funds websites, ERP, POS, automation, green tech, productive equipment.",
-    url: "https://smemu.org/technology-and-innovation-scheme-tinns/",
+    url: "https://www.smemu.com/schemes/",
     tags: ["Technology", "Equipment", "Digital"],
   },
   {
