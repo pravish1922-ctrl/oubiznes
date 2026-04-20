@@ -2,6 +2,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Home, RotateCcw, ExternalLink } from "lucide-react";
+import EmailCapture from "@/components/EmailCapture";
 
 const NAVY = "#0A1628";
 const CORAL = "#0D9488";
@@ -188,7 +189,7 @@ export default function VATCalculator() {
           </ul>
         </div>
       </div>
-
+      <EmailCapture source="/vat" message="Get notified when VAT rates or thresholds change in Mauritius." />
       <footer className="bg-white border-t border-gray-200" style={{ padding: "16px 24px", textAlign: "center" }}>
         <p style={{ fontSize: 13, color: "#9ca3af" }}>
           © 2026 OuBiznes.mu · Not tax advice — verify with MRA or your accountant ·{" "}
