@@ -367,8 +367,8 @@ export default function GrantApply() {
         )}
       </div>
       <div style={{ maxWidth: 700, margin: "0 auto", padding: "0 20px" }}>
-      <EmailCapture source="/apply" message="Get alerts when grant application windows open." />
-      </div>  
+        <EmailCapture source="/apply" message="Get alerts when grant application windows open." />
+      </div>
       <footer className="bg-white border-t border-gray-200" style={{ padding: "16px 24px", textAlign: "center" }}>
         <p style={{ fontSize: 13, color: "#9ca3af" }}>
           © 2026 OuBiznes.mu · Not legal advice ·{" "}
