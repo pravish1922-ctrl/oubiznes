@@ -518,6 +518,15 @@ export default function GrantsFinder() {
               Ranked by fit. Always verify eligibility with the agency before applying.
             </p>
             
+            {answers.registered !== "yes" && (
+              <div style={{ background: "#FFF8F0", border: "1px solid #fde8d8", borderRadius: 10, padding: "12px 16px", marginBottom: 8, display: "flex", gap: 10 }}>
+                <span style={{ fontSize: 16 }}>💡</span>
+                <p style={{ fontSize: 13, color: "#92400e", margin: 0, lineHeight: 1.6 }}>
+                  <strong>Not yet registered?</strong> Grants ranked below require a BRN. <a href="https://companies.govmu.org" target="_blank" rel="noopener noreferrer" style={{ color: "#92400e", textDecoration: "underline" }}>Register your business first →</a>
+                </p>
+              </div>
+            )}
+            
             <EmailCapture source="/grants" message="Get alerts when new grants or schemes launch in Mauritius." />
             
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
