@@ -2,6 +2,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Home, RotateCcw, Copy, Check } from "lucide-react";
+import EmailCapture from "@/components/EmailCapture";
 
 const NAVY = "#0A1628";
 const CORAL = "#0D9488";
@@ -365,7 +366,7 @@ export default function GrantApply() {
           </>
         )}
       </div>
-
+      <EmailCapture source="/apply" message="Get alerts when grant application windows open." />
       <footer className="bg-white border-t border-gray-200" style={{ padding: "16px 24px", textAlign: "center" }}>
         <p style={{ fontSize: 13, color: "#9ca3af" }}>
           © 2026 OuBiznes.mu · Not legal advice ·{" "}
