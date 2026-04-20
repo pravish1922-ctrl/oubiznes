@@ -11,7 +11,7 @@ const GREEN = "#0F7B3F";
 const BLUE = "#1E5AA0";
 
 const VAT_RATE = 0.15;
-const THRESHOLD = 6000000;
+const THRESHOLD = 3000000;
 
 export default function VATCalculator() {
   const [mode, setMode] = useState("add"); // "add" = price excl VAT, "extract" = price incl VAT
@@ -189,7 +189,7 @@ export default function VATCalculator() {
           </ul>
         </div>
       </div>
-      <div style={{ maxWidth: 700, margin: "0 auto", padding: "0 20px" }}>
+      <div style={{ maxWidth: 600, margin: "0 auto", padding: "0 20px" }}>
           <EmailCapture source="/vat" message="Get notified when VAT rates or thresholds change in Mauritius." />
       </div>
       <footer className="bg-white border-t border-gray-200" style={{ padding: "16px 24px", textAlign: "center" }}>
