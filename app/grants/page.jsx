@@ -391,7 +391,7 @@ function scoreScheme(scheme, answers) {
   let score = 0;
   const tv = turnoverValue(answers.turnover);
   if (tv < scheme.minTurnover || tv > scheme.maxTurnover) return -1;
-  if (answers.registered !== "yes" && scheme.registered) return -1;
+  if (answers.registered !== "yes" && scheme.registered) score -= 10;
 
   const sector = answers.sector;
   if (scheme.sectors.includes("all") || scheme.sectors.includes(sector)) score += 10;
