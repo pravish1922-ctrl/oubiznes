@@ -137,7 +137,7 @@ export default function ComplianceCalendar() {
             <button onClick={generateICS} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 13, color: "#fff", background: CORAL, border: "none", borderRadius: 8, padding: "6px 14px", cursor: "pointer", fontWeight: 600 }}>
               <Download size={14} /> Download .ics
             </button>
-            <EmailCapture source="/calendar" message="Get alerted when MRA deadlines or tax rules are updated." />
+           
             <Link href="/" style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 13, color: NAVY, border: "1px solid #e5e7eb", borderRadius: 8, padding: "5px 12px", textDecoration: "none" }}>
               <Home size={14} /> Home
             </Link>
@@ -239,7 +239,7 @@ export default function ComplianceCalendar() {
           </p>
         </div>
       </div>
-
+      <EmailCapture source="/calendar" message="Get alerted when MRA deadlines or tax rules are updated." />
       <footer className="bg-white border-t border-gray-200 print:hidden" style={{ padding: "16px 24px", textAlign: "center" }}>
         <p style={{ fontSize: 13, color: "#9ca3af" }}>
           © 2026 OuBiznes.mu ·{" "}
