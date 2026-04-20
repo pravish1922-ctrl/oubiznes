@@ -189,7 +189,7 @@ export default function VATCalculator() {
           </ul>
         </div>
       </div>
-      <div style={{ maxWidth: 600, margin: "0 auto", padding: "0 20px" }}>
+      <div style={{ maxWidth: 680, margin: "0 auto", padding: "0 20px" }}>
           <EmailCapture source="/vat" message="Get notified when VAT rates or thresholds change in Mauritius." />
       </div>
       <footer className="bg-white border-t border-gray-200" style={{ padding: "16px 24px", textAlign: "center" }}>
