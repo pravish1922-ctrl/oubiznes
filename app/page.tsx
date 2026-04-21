@@ -26,6 +26,8 @@ const tools = [
         emoji: "🔍",
         title: "BRN Lookup",
         desc: "Search any Mauritian registered company.Powered by the official Mauritius company registry",
+        tag: "New",
+        tagColor: GREEN,
         /*tag: "Coming Soon",
         tagColor: GOLD,
         tagTextColor: NAVY,*/
