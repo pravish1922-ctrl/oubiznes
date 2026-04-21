@@ -38,6 +38,24 @@ export default function BRNLookup() {
     }
   }
 
+   async function handleSelect(c) {
+    setSelected(c);
+    setDetail(null);
+    if (c.orgNo) {
+      setDetailLoading(true);
+      try {
+        const res = await fetch(`/api/companies/detail?orgNo=${c.orgNo}`);
+        const data = await res.json();
+        if (!data.error) setDetail(data);
+      } catch {
+        // silently fail — base fields still show from search result
+      } finally {
+        setDetailLoading(false);
+      }
+    }
+  }
+
+
   function reset() {
     setQuery("");
     setResults(null);
@@ -165,7 +183,8 @@ export default function BRNLookup() {
                 {results.map(c => (
                   <button
                     key={c.company_number}
-                    onClick={() => setSelected(c)}
+                    //onClick={() => setSelected(c)}
+                    onClick={() => handleSelect(c)}
                     style={{
                       textAlign: "left", background: "#fff", border: "1.5px solid #e5e7eb",
                       borderRadius: 12, padding: "14px 18px", cursor: "pointer",
