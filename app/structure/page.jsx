@@ -114,7 +114,13 @@ function getRecommendation(answers) {
     };
   }
 
-  if (liability === "yes" || employees === "yes_many" || growth === "grow" || turnover === "over6m" || (partners === "partners" && liability === "yes")) {
+ if (
+    liability === "yes" ||
+    employees === "yes_many" ||
+    growth === "grow" ||
+    turnover === "over6m" ||
+    (partners === "partners" && liability === "yes")
+  ) {
     return {
       primary: "Private Company Limited by Shares (Ltd)",
       tag: "Most popular choice",
@@ -134,9 +140,10 @@ function getRecommendation(answers) {
         "At least one director and one shareholder required",
       ],
       cost: "Rs 1,000–5,000 incorporation fees + ~Rs 2,000–8,000/year accounting",
-      timeToRegister: "3–7 business days (online via CBRIS)",
-      nextStep: "Register online at companies.govmu.org. You'll need a company name, registered address, and one director. Your BRN is issued same day.",
-      official: "https://companies.govmu.org",
+      timeToRegister: "3–7 business days",
+      nextStep: "Register online via CBRIS — the official Mauritius company registration system. You'll need a company name, registered address, and one director. Your BRN is issued within 3–7 business days.",
+      official: "https://cbris.mns.global",
+      officialLabel: "Register on CBRIS →",
     };
   }
 
@@ -324,7 +331,7 @@ export default function StructureAdvisor() {
                 <p style={{ fontSize: 14, color: "#1e3a5f", lineHeight: 1.6, margin: 0 }}>{recommendation.nextStep}</p>
               </div>
               <a href={recommendation.official} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 6, color: CORAL, fontWeight: 700, fontSize: 14, textDecoration: "underline" }}>
-                Go to official registration portal →
+                {recommendation.officialLabel || "Go to official registration portal →"}
               </a>
             </div>
             <div style={{ background: "#FFF8F0", border: "1px solid #fde8d8", borderRadius: 10, padding: "12px 16px", marginBottom: 20, display: "flex", gap: 10 }}>
