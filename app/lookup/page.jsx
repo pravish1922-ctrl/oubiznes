@@ -14,7 +14,6 @@ export default function BRNLookup() {
   const [results, setResults] = useState(null);
   const [selected, setSelected] = useState(null);
   const [detail, setDetail] = useState(null);
-  const [detailLoading, setDetailLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -43,17 +42,7 @@ export default function BRNLookup() {
 
   async function handleSelect(company) {
     setSelected(company);
-    setDetail(null);
-    setDetailLoading(true);
-    try {
-      const res = await fetch(`/api/companies/detail?orgNo=${company.orgNo}`);
-      const data = await res.json();
-      setDetail(data);
-    } catch {
-      // detail enrichment failed silently — base info still shows
-    } finally {
-      setDetailLoading(false);
-    }
+    setDetail(company); // Use search result data directly — no second API call needed
   }
 
   function reset() {
@@ -159,21 +148,13 @@ export default function BRNLookup() {
               ))}
             </div>
 
-            {/* Enriched detail — from detail API */}
-            {detailLoading && (
-              <p style={{ fontSize: 13, color: "#9ca3af", marginTop: 16 }}>Loading full details…</p>
-            )}
-
-            {detail && !detailLoading && (
+            {/* Enriched detail — from search result (no second API call) */}
+            {detail && (
               <>
-                {/* Extra company fields */}
+                {/* Extra company fields from search result */}
                 {(() => {
                   const extras = [
                     { label: "Type", value: detail.typeOfCompany },
-                    { label: "Sub-category", value: detail.subCategory },
-                    { label: "Registered Office Address", value: detail.registeredOfficeAddress },
-                    { label: "Address Effective Date", value: detail.effectiveDateRegisteredOffice },
-                    { label: "Defunct Date", value: detail.defunctDate },
                   ].filter(r => r.value);
                   return extras.length > 0 ? (
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 4 }}>
@@ -187,51 +168,9 @@ export default function BRNLookup() {
                   ) : null;
                 })()}
 
-                {/* Business Details */}
-                {detail.businessDetails && detail.businessDetails.length > 0 && (
-                  <div style={{ marginTop: 20 }}>
-                    <div style={{ fontSize: 12, color: "#9ca3af", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", marginBottom: 10 }}>Business Details</div>
-                    {detail.businessDetails.map((b, i) => (
-                      <div key={i} style={{ background: "#f9fafb", borderRadius: 10, padding: "12px 14px", marginBottom: 8 }}>
-                        {[
-                          { label: "Business Reg. No.", value: b.brn },
-                          { label: "Business Name", value: b.businessName },
-                          { label: "Nature of Business", value: b.natureOfBusiness },
-                          { label: "Business Address", value: b.businessAddress },
-                        ].filter(r => r.value).map(row => (
-                          <div key={row.label} style={{ display: "flex", gap: 8, padding: "4px 0", borderBottom: "1px solid #e5e7eb" }}>
-                            <span style={{ fontSize: 12, color: "#9ca3af", minWidth: 150, flexShrink: 0 }}>{row.label}</span>
-                            <span style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>{row.value}</span>
-                          </div>
-                        ))}
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Stated Capital */}
-                {detail.statedCapital && detail.statedCapital.length > 0 && (
-                  <div style={{ marginTop: 20 }}>
-                    <div style={{ fontSize: 12, color: "#9ca3af", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", marginBottom: 10 }}>Stated Capital</div>
-                    {detail.statedCapital.map((s, i) => (
-                      <div key={i} style={{ background: "#f9fafb", borderRadius: 10, padding: "12px 14px", marginBottom: 8 }}>
-                        {[
-                          { label: "Type of Shares", value: s.typeOfShares },
-                          { label: "No. of Shares", value: s.numberOfShares?.toLocaleString() },
-                          { label: "Currency", value: s.currency },
-                          { label: "Stated Capital", value: s.statedCapital != null ? `Rs ${Number(s.statedCapital).toLocaleString()}` : null },
-                          { label: "Amount Unpaid", value: s.amountUnpaid != null ? `Rs ${Number(s.amountUnpaid).toLocaleString()}` : null },
-                          { label: "Par Value", value: s.parValue != null ? `Rs ${Number(s.parValue).toLocaleString()}` : null },
-                        ].filter(r => r.value).map(row => (
-                          <div key={row.label} style={{ display: "flex", gap: 8, padding: "4px 0", borderBottom: "1px solid #e5e7eb" }}>
-                            <span style={{ fontSize: 12, color: "#9ca3af", minWidth: 150, flexShrink: 0 }}>{row.label}</span>
-                            <span style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>{row.value}</span>
-                          </div>
-                        ))}
-                      </div>
-                    ))}
-                  </div>
-                )}
+                {/* Note: Business Details and Stated Capital require a separate detail API.
+                    MNS search result doesn't include these — only the popup view does.
+                    To fully enrich detail, we'd need to HTML-scrape the MNS detail page. */}
               </>
             )}
 
