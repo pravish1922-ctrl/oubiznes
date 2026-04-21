@@ -125,7 +125,7 @@ export default function BRNLookup() {
             {error === "unavailable" ? (
               <>
                 <p style={{ fontWeight: 700, color: NAVY, marginBottom: 6, fontSize: 15 }}>
-                  Live company search is temporarily unavailable.
+                  Search failed. Please try again.
                 </p>
                 <p style={{ color: "#6b7280", marginBottom: 12, fontSize: 14 }}>
                   You can search directly on the official Mauritius company registry:
