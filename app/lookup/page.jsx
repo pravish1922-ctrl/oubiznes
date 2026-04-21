@@ -95,7 +95,7 @@ export default function BRNLookup() {
           <span style={{ display: "block", color: CORAL }}>BRN Lookup</span>
         </h1>
         <p style={{ fontSize: 15, color: "#6b7280", marginBottom: 28 }}>
-          Search any Mauritius-registered company by name or BRN number.
+          Search any Mauritius-registered company by name or BRN number. Powered by the official Mauritius company registry.
         </p>
 
         <form onSubmit={handleSearch} style={{ display: "flex", gap: 10, marginBottom: 28 }}>
@@ -120,32 +120,11 @@ export default function BRNLookup() {
           </button>
         </form>
 
-        {error && (
-          <div style={{ background: "#FFF8F0", border: "1px solid 0D9488", borderRadius: 12, padding: "20px 24px", marginBottom: 20 }}>
-            {error === "unavailable" ? (
-              <>
-                <p style={{ fontWeight: 700, color: NAVY, marginBottom: 6, fontSize: 15 }}>
-                  Search failed. Please try again.
-                </p>
-                <p style={{ color: "#6b7280", marginBottom: 12, fontSize: 14 }}>
-                  You can search directly on the official Mauritius company registry:
-                </p>
-                <a
-                  href="https://companies.govmu.org"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ display: "inline-flex", alignItems: "center", gap: 5, color: CORAL, fontWeight: 700, fontSize: 14, textDecoration: "underline" }}
-                >
-                  companies.govmu.org <ExternalLink size={13} />
-                </a>
-              </>
-            ) : (
-              <p style={{ color: "0D9488", fontSize: 14, fontWeight: 600 }}>
-                Search failed. Please try again.
-              </p>
-            )}
-          </div>
-        )}
+      {error && (
+        <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 10, padding: "12px 16px", marginBottom: 20, color: "#dc2626", fontSize: 14 }}>
+          Search failed. Please try again.
+        </div>
+      )}
 
         {/* Detail view */}
         {detail && (
