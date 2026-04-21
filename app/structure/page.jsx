@@ -209,11 +209,13 @@ export default function StructureAdvisor() {
 
       <header className="border-b border-gray-200 bg-white print:hidden">
         <div style={{ maxWidth: 700, margin: "0 auto", padding: "12px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <Link href="/" style={{ textDecoration: "none", color: "inherit" }}>
           <div>
             <span style={{ fontWeight: 800, fontSize: 18, color: CORAL }}>OuBiznes</span>
             <span style={{ fontWeight: 800, fontSize: 18, color: NAVY }}>.mu</span>
             <span style={{ marginLeft: 10, fontSize: 14, color: "#6b7280" }}>Structure Advisor</span>
           </div>
+          </Link>
           <Link href="/" style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 13, color: NAVY, border: "1px solid #e5e7eb", borderRadius: 8, padding: "5px 12px", textDecoration: "none" }}>
             <Home size={14} /> Home
           </Link>
