@@ -155,6 +155,84 @@ export default function BRNLookup() {
                 </div>
               ))}
             </div>
+            
+            {/* Detail loading spinner */}
+            {detailLoading && (
+              <p style={{ fontSize: 13, color: "#9ca3af", marginTop: 16 }}>Loading full details…</p>
+            )}
+
+            {/* Enriched fields from detail API */}
+            {detail && !detailLoading && (
+              <>
+                {/* Extra company fields */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 4 }}>
+                  {[
+                    { label: "Type", value: detail.typeOfCompany },
+                    { label: "Sub-category", value: detail.subCategory },
+                    { label: "Defunct Date", value: detail.defunctDate },
+                    { label: "Registered Address", value: detail.registeredOfficeAddress },
+                    { label: "Address Effective Date", value: detail.effectiveDateRegisteredOffice },
+                  ].filter(r => r.value).map(row => (
+                    <div key={row.label} style={{ padding: "10px 0", borderBottom: "1px solid #f3f4f6" }}>
+                      <div style={{ fontSize: 12, color: "#9ca3af", fontWeight: 600, marginBottom: 2 }}>{row.label}</div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: NAVY }}>{row.value}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Business Details */}
+                {detail.businessDetails && detail.businessDetails.length > 0 && (
+                  <div style={{ marginTop: 20 }}>
+                    <div style={{ fontSize: 12, color: "#9ca3af", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", marginBottom: 10 }}>
+                      Business Details
+                    </div>
+                    {detail.businessDetails.map((b, i) => (
+                      <div key={i} style={{ background: "#f9fafb", borderRadius: 10, padding: "12px 14px", marginBottom: 8 }}>
+                        {[
+                          { label: "Business Reg. No.", value: b.brn },
+                          { label: "Business Name", value: b.businessName },
+                          { label: "Nature of Business", value: b.natureOfBusiness },
+                          { label: "Business Address", value: b.businessAddress },
+                        ].filter(r => r.value).map(row => (
+                          <div key={row.label} style={{ display: "flex", gap: 8, marginBottom: 4 }}>
+                            <span style={{ fontSize: 12, color: "#9ca3af", minWidth: 140, flexShrink: 0 }}>{row.label}</span>
+                            <span style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>{row.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Stated Capital */}
+                {detail.statedCapital && detail.statedCapital.length > 0 && (
+                  <div style={{ marginTop: 20 }}>
+                    <div style={{ fontSize: 12, color: "#9ca3af", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", marginBottom: 10 }}>
+                      Stated Capital
+                    </div>
+                    {detail.statedCapital.map((s, i) => (
+                      <div key={i} style={{ background: "#f9fafb", borderRadius: 10, padding: "12px 14px", marginBottom: 8 }}>
+                        {[
+                          { label: "Type of Shares", value: s.typeOfShares },
+                          { label: "No. of Shares", value: s.numberOfShares?.toLocaleString() },
+                          { label: "Currency", value: s.currency },
+                          { label: "Stated Capital", value: s.statedCapital != null ? `Rs ${Number(s.statedCapital).toLocaleString()}` : null },
+                          { label: "Amount Unpaid", value: s.amountUnpaid != null ? `Rs ${Number(s.amountUnpaid).toLocaleString()}` : null },
+                          { label: "Par Value", value: s.parValue != null ? `Rs ${Number(s.parValue).toLocaleString()}` : null },
+                        ].filter(r => r.value).map(row => (
+                          <div key={row.label} style={{ display: "flex", gap: 8, marginBottom: 4 }}>
+                            <span style={{ fontSize: 12, color: "#9ca3af", minWidth: 140, flexShrink: 0 }}>{row.label}</span>
+                            <span style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>{row.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+
+            
             <div style={{ marginTop: 16 }}>
               <a
                 href={`https://onlinesearch.mns.mu`}
