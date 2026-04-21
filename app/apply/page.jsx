@@ -150,6 +150,34 @@ Attachments:
 6. Project description and budget breakdown`;
 }
 
+// MOVED OUTSIDE: Field component to prevent re-renders
+function Field({ fieldKey, label, placeholder, value, onChange, textarea, error, inputStyle }) {
+  const labelStyle = { fontSize: 13, fontWeight: 600, color: "#374151", display: "block", marginBottom: 4 };
+  const errorStyle = { fontSize: 12, color: "#ef4444", marginBottom: 10 };
+  return (
+    <div>
+      <label style={labelStyle}>{label}</label>
+      {textarea ? (
+        <textarea
+          style={{ ...inputStyle, minHeight: 80, resize: "vertical" }}
+          placeholder={placeholder}
+          value={value || ""}
+          onChange={e => onChange(fieldKey, e.target.value)}
+        />
+      ) : (
+        <input
+          type="text"
+          style={inputStyle}
+          placeholder={placeholder}
+          value={value || ""}
+          onChange={e => onChange(fieldKey, e.target.value)}
+        />
+      )}
+      {error && <p style={errorStyle}>{error}</p>}
+    </div>
+  );
+}
+
 export default function GrantApply() {
   const [step, setStep] = useState(0);
   const [scheme, setScheme] = useState("");
@@ -198,39 +226,12 @@ export default function GrantApply() {
     if (errors[k]) setErrors(prev => ({ ...prev, [k]: undefined }));
   };
 
-  const inputStyle = (key) => ({
+  const getInputStyle = (key) => ({
     width: "100%", padding: "11px 14px", fontSize: 14,
     border: `1.5px solid ${errors[key] ? "#ef4444" : "#e5e7eb"}`,
     borderRadius: 10, outline: "none", color: NAVY, boxSizing: "border-box",
     marginBottom: errors[key] ? 4 : 14,
   });
-
-  const labelStyle = { fontSize: 13, fontWeight: 600, color: "#374151", display: "block", marginBottom: 4 };
-  const errorStyle = { fontSize: 12, color: "#ef4444", marginBottom: 10 };
-
-  function Field({ fieldKey, label, placeholder, value, onChange, textarea }) {
-    return (
-      <div key={fieldKey}>
-        <label style={labelStyle}>{label}</label>
-        {textarea ? (
-          <textarea
-            style={{ ...inputStyle(fieldKey), minHeight: 80, resize: "vertical" }}
-            placeholder={placeholder}
-            value={value || ""}
-            onChange={e => onChange(fieldKey, e.target.value)}
-          />
-        ) : (
-          <input
-            style={inputStyle(fieldKey)}
-            placeholder={placeholder}
-            value={value || ""}
-            onChange={e => onChange(fieldKey, e.target.value)}
-          />
-        )}
-        {errors[fieldKey] && <p style={errorStyle}>{errors[fieldKey]}</p>}
-      </div>
-    );
-  }
 
   return (
     <div style={{ background: "linear-gradient(to bottom, #FAF5EE, #fff)", colorScheme: "light", minHeight: "100vh" }}>
@@ -243,14 +244,13 @@ export default function GrantApply() {
 
       <header className="border-b border-gray-200 bg-white print:hidden">
         <div style={{ maxWidth: 720, margin: "0 auto", padding: "12px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          
-        <Link href="/" style={{ textDecoration: "none", color: "inherit" }}>
+          <Link href="/" style={{ textDecoration: "none", color: "inherit" }}>
             <div>
-                <span style={{ fontWeight: 800, fontSize: 18, color: CORAL }}>OuBiznes</span>
-                <span style={{ fontWeight: 800, fontSize: 18, color: NAVY }}>.mu</span>
-                <span style={{ marginLeft: 10, fontSize: 14, color: "#6b7280" }}>Grant Application Generator</span>
+              <span style={{ fontWeight: 800, fontSize: 18, color: CORAL }}>OuBiznes</span>
+              <span style={{ fontWeight: 800, fontSize: 18, color: NAVY }}>.mu</span>
+              <span style={{ marginLeft: 10, fontSize: 14, color: "#6b7280" }}>Grant Application Generator</span>
             </div>
-          </Link>  
+          </Link>
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={reset} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 13, color: "#6b7280", background: "none", border: "none", cursor: "pointer" }}>
               <RotateCcw size={14} /> Reset
@@ -263,7 +263,6 @@ export default function GrantApply() {
       </header>
 
       <div style={{ maxWidth: 720, margin: "0 auto", padding: "32px 20px" }}>
-        {/* Progress */}
         <div style={{ display: "flex", gap: 4, marginBottom: 32 }}>
           {STEPS.map((s, i) => (
             <div key={i} style={{ flex: 1, height: 4, borderRadius: 2, background: i <= step ? CORAL : "#e5e7eb" }} />
@@ -308,9 +307,27 @@ export default function GrantApply() {
               { key: "phone", label: "Phone", placeholder: "e.g. +230 5XXX XXXX" },
               { key: "email", label: "Email", placeholder: "e.g. contact@yourbusiness.mu" },
             ].map(f => (
-              <Field key={f.key} fieldKey={f.key} label={f.label} placeholder={f.placeholder} value={business[f.key]} onChange={updateBusiness} />
+              <Field 
+                key={f.key} 
+                fieldKey={f.key} 
+                label={f.label} 
+                placeholder={f.placeholder} 
+                value={business[f.key]} 
+                onChange={updateBusiness}
+                error={errors[f.key]}
+                inputStyle={getInputStyle(f.key)}
+              />
             ))}
-            <Field fieldKey="description" label="Brief business description" placeholder="What does your business do? Who are your customers?" value={business.description} onChange={updateBusiness} textarea />
+            <Field 
+              fieldKey="description" 
+              label="Brief business description" 
+              placeholder="What does your business do? Who are your customers?" 
+              value={business.description} 
+              onChange={updateBusiness}
+              textarea
+              error={errors.description}
+              inputStyle={getInputStyle("description")}
+            />
             <button onClick={handleNextToBusiness} style={{ width: "100%", padding: "14px", background: CORAL, color: "#fff", border: "none", borderRadius: 12, fontWeight: 700, fontSize: 15, cursor: "pointer", marginTop: 8 }}>
               Next: Project details →
             </button>
@@ -330,11 +347,44 @@ export default function GrantApply() {
               { key: "ownContribution", label: "Your contribution (20%)", placeholder: "e.g. Rs 36,000" },
               { key: "quotes", label: "Number of vendor quotes", placeholder: "e.g. 3" },
             ].map(f => (
-              <Field key={f.key} fieldKey={f.key} label={f.label} placeholder={f.placeholder} value={project[f.key]} onChange={updateProject} />
+              <Field 
+                key={f.key} 
+                fieldKey={f.key} 
+                label={f.label} 
+                placeholder={f.placeholder} 
+                value={project[f.key]} 
+                onChange={updateProject}
+                error={errors[f.key]}
+                inputStyle={getInputStyle(f.key)}
+              />
             ))}
-            <Field fieldKey="outcome1" label="Expected outcome 1" placeholder="e.g. 30% increase in online sales" value={project.outcome1} onChange={updateProject} />
-            <Field fieldKey="outcome2" label="Expected outcome 2" placeholder="e.g. 10 hours/week saved on inventory management" value={project.outcome2} onChange={updateProject} />
-            <Field fieldKey="outcome3" label="Expected outcome 3" placeholder="e.g. Creation of 2 new jobs within 12 months" value={project.outcome3} onChange={updateProject} />
+            <Field 
+              fieldKey="outcome1" 
+              label="Expected outcome 1" 
+              placeholder="e.g. 30% increase in online sales" 
+              value={project.outcome1} 
+              onChange={updateProject}
+              error={errors.outcome1}
+              inputStyle={getInputStyle("outcome1")}
+            />
+            <Field 
+              fieldKey="outcome2" 
+              label="Expected outcome 2" 
+              placeholder="e.g. 10 hours/week saved on inventory management" 
+              value={project.outcome2} 
+              onChange={updateProject}
+              error={errors.outcome2}
+              inputStyle={getInputStyle("outcome2")}
+            />
+            <Field 
+              fieldKey="outcome3" 
+              label="Expected outcome 3" 
+              placeholder="e.g. Creation of 2 new jobs within 12 months" 
+              value={project.outcome3} 
+              onChange={updateProject}
+              error={errors.outcome3}
+              inputStyle={getInputStyle("outcome3")}
+            />
 
             <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
               <button onClick={() => { setErrors({}); setStep(1); }} style={{ flex: 1, padding: "14px", background: "#fff", color: NAVY, border: "2px solid #e5e7eb", borderRadius: 12, fontWeight: 700, fontSize: 15, cursor: "pointer" }}>
