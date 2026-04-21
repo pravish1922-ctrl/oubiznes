@@ -12,8 +12,8 @@ const BLUE = "#1E5AA0";
 
 const SCHEMES = [
   {
-    id: "tinns",
-    name: "Technology & Innovation Scheme (TINNS)",
+    id: "tins",
+    name: "Technology & Innovation Scheme (TINS)",
     agency: "SME Mauritius",
     amount: "Up to Rs 150,000",
     coverage: "80% of project cost",
@@ -255,7 +255,7 @@ const SCHEMES = [
   },
   {
     id: "young-entrepreneur",
-    name: "TINNS Young Entrepreneur Bonus",
+    name: "TINS Young Entrepreneur Bonus",
     agency: "SME Mauritius",
     amount: "Up to Rs 50,000 (full grant)",
     coverage: "100% for non-ICT equipment",
@@ -266,7 +266,7 @@ const SCHEMES = [
     registered: true,
     youngEntrepreneur: true,
     desc: "Full grant (not 80%) up to Rs 50,000 for entrepreneurs under 29 on non-ICT equipment.",
-    url: "https://smemu.org/technology-and-innovation-scheme-tinns/",
+    url: "https://www.smemu.com/schemes/",
     tags: ["Youth", "Equipment", "Bonus"],
   },
   {
