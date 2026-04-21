@@ -25,6 +25,7 @@ export default function BRNLookup() {
     setError("");
     setResults(null);
     setSelected(null);
+    setDetail(null);
     try {
       const res = await fetch(`/api/companies/search?q=${encodeURIComponent(query.trim())}`);
       const data = await res.json();
@@ -40,7 +41,7 @@ export default function BRNLookup() {
     }
   }
 
-   async function handleSelect(c) {
+  async function handleSelect(c) {
     setSelected(c);
     setDetail(null);
     if (c.orgNo) {
@@ -57,11 +58,11 @@ export default function BRNLookup() {
     }
   }
 
-
   function reset() {
     setQuery("");
     setResults(null);
     setSelected(null);
+    setDetail(null);
     setError("");
   }
 
@@ -138,10 +139,12 @@ export default function BRNLookup() {
           <div style={{ background: "#fff", border: `2px solid ${CORAL}`, borderRadius: 16, padding: 24, marginBottom: 20 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
               <h2 style={{ fontSize: 20, fontWeight: 800, color: NAVY, margin: 0 }}>{selected.name}</h2>
-              <button onClick={() => setSelected(null)} style={{ fontSize: 13, color: "#6b7280", background: "none", border: "none", cursor: "pointer", marginLeft: 12 }}>
+              <button onClick={() => { setSelected(null); setDetail(null); }} style={{ fontSize: 13, color: "#6b7280", background: "none", border: "none", cursor: "pointer", marginLeft: 12 }}>
                 ← Back to results
               </button>
             </div>
+
+            {/* Base fields — always shown instantly from search result */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               {[
                 { label: "File Number / BRN", value: selected.company_number },
@@ -157,7 +160,7 @@ export default function BRNLookup() {
                 </div>
               ))}
             </div>
-            
+
             {/* Detail loading spinner */}
             {detailLoading && (
               <p style={{ fontSize: 13, color: "#9ca3af", marginTop: 16 }}>Loading full details…</p>
@@ -234,7 +237,6 @@ export default function BRNLookup() {
               </>
             )}
 
-            
             <div style={{ marginTop: 16 }}>
               <a
                 href={`https://onlinesearch.mns.mu`}
@@ -263,7 +265,6 @@ export default function BRNLookup() {
                 {results.map(c => (
                   <button
                     key={c.company_number}
-                    //onClick={() => setSelected(c)}
                     onClick={() => handleSelect(c)}
                     style={{
                       textAlign: "left", background: "#fff", border: "1.5px solid #e5e7eb",
