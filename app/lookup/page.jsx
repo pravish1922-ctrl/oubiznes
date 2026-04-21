@@ -41,20 +41,18 @@ export default function BRNLookup() {
     }
   }
 
-  async function handleSelect(c) {
-    setSelected(c);
+  async function handleSelect(company) {
+    setSelected(company);
     setDetail(null);
-    if (c.orgNo) {
-      setDetailLoading(true);
-      try {
-        const res = await fetch(`/api/companies/detail?orgNo=${c.orgNo}`);
-        const data = await res.json();
-        if (!data.error) setDetail(data);
-      } catch {
-        // silently fail — base fields still show from search result
-      } finally {
-        setDetailLoading(false);
-      }
+    setDetailLoading(true);
+    try {
+      const res = await fetch(`/api/companies/detail?orgNo=${company.orgNo}`);
+      const data = await res.json();
+      setDetail(data);
+    } catch {
+      // detail enrichment failed silently — base info still shows
+    } finally {
+      setDetailLoading(false);
     }
   }
 
@@ -139,12 +137,12 @@ export default function BRNLookup() {
           <div style={{ background: "#fff", border: `2px solid ${CORAL}`, borderRadius: 16, padding: 24, marginBottom: 20 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
               <h2 style={{ fontSize: 20, fontWeight: 800, color: NAVY, margin: 0 }}>{selected.name}</h2>
-              <button onClick={() => { setSelected(null); setDetail(null); }} style={{ fontSize: 13, color: "#6b7280", background: "none", border: "none", cursor: "pointer", marginLeft: 12 }}>
+              <button onClick={() => { setSelected(null); setDetail(null); }} style={{ fontSize: 13, color: "#6b7280", background: "none", border: "none", cursor: "pointer", marginLeft: 12, whiteSpace: "nowrap" }}>
                 ← Back to results
               </button>
             </div>
 
-            {/* Base fields — always shown instantly from search result */}
+            {/* Core fields — always available from search result */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               {[
                 { label: "File Number / BRN", value: selected.company_number },
@@ -161,36 +159,38 @@ export default function BRNLookup() {
               ))}
             </div>
 
-            {/* Detail loading spinner */}
+            {/* Enriched detail — from detail API */}
             {detailLoading && (
               <p style={{ fontSize: 13, color: "#9ca3af", marginTop: 16 }}>Loading full details…</p>
             )}
 
-            {/* Enriched fields from detail API */}
             {detail && !detailLoading && (
               <>
                 {/* Extra company fields */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 4 }}>
-                  {[
+                {(() => {
+                  const extras = [
                     { label: "Type", value: detail.typeOfCompany },
                     { label: "Sub-category", value: detail.subCategory },
-                    { label: "Defunct Date", value: detail.defunctDate },
-                    { label: "Registered Address", value: detail.registeredOfficeAddress },
+                    { label: "Registered Office Address", value: detail.registeredOfficeAddress },
                     { label: "Address Effective Date", value: detail.effectiveDateRegisteredOffice },
-                  ].filter(r => r.value).map(row => (
-                    <div key={row.label} style={{ padding: "10px 0", borderBottom: "1px solid #f3f4f6" }}>
-                      <div style={{ fontSize: 12, color: "#9ca3af", fontWeight: 600, marginBottom: 2 }}>{row.label}</div>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: NAVY }}>{row.value}</div>
+                    { label: "Defunct Date", value: detail.defunctDate },
+                  ].filter(r => r.value);
+                  return extras.length > 0 ? (
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 4 }}>
+                      {extras.map(row => (
+                        <div key={row.label} style={{ padding: "10px 0", borderBottom: "1px solid #f3f4f6", gridColumn: row.label === "Registered Office Address" ? "1 / -1" : "auto" }}>
+                          <div style={{ fontSize: 12, color: "#9ca3af", fontWeight: 600, marginBottom: 2 }}>{row.label}</div>
+                          <div style={{ fontSize: 14, fontWeight: 600, color: NAVY }}>{row.value}</div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  ) : null;
+                })()}
 
                 {/* Business Details */}
                 {detail.businessDetails && detail.businessDetails.length > 0 && (
                   <div style={{ marginTop: 20 }}>
-                    <div style={{ fontSize: 12, color: "#9ca3af", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", marginBottom: 10 }}>
-                      Business Details
-                    </div>
+                    <div style={{ fontSize: 12, color: "#9ca3af", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", marginBottom: 10 }}>Business Details</div>
                     {detail.businessDetails.map((b, i) => (
                       <div key={i} style={{ background: "#f9fafb", borderRadius: 10, padding: "12px 14px", marginBottom: 8 }}>
                         {[
@@ -199,8 +199,8 @@ export default function BRNLookup() {
                           { label: "Nature of Business", value: b.natureOfBusiness },
                           { label: "Business Address", value: b.businessAddress },
                         ].filter(r => r.value).map(row => (
-                          <div key={row.label} style={{ display: "flex", gap: 8, marginBottom: 4 }}>
-                            <span style={{ fontSize: 12, color: "#9ca3af", minWidth: 140, flexShrink: 0 }}>{row.label}</span>
+                          <div key={row.label} style={{ display: "flex", gap: 8, padding: "4px 0", borderBottom: "1px solid #e5e7eb" }}>
+                            <span style={{ fontSize: 12, color: "#9ca3af", minWidth: 150, flexShrink: 0 }}>{row.label}</span>
                             <span style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>{row.value}</span>
                           </div>
                         ))}
@@ -212,9 +212,7 @@ export default function BRNLookup() {
                 {/* Stated Capital */}
                 {detail.statedCapital && detail.statedCapital.length > 0 && (
                   <div style={{ marginTop: 20 }}>
-                    <div style={{ fontSize: 12, color: "#9ca3af", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", marginBottom: 10 }}>
-                      Stated Capital
-                    </div>
+                    <div style={{ fontSize: 12, color: "#9ca3af", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", marginBottom: 10 }}>Stated Capital</div>
                     {detail.statedCapital.map((s, i) => (
                       <div key={i} style={{ background: "#f9fafb", borderRadius: 10, padding: "12px 14px", marginBottom: 8 }}>
                         {[
@@ -225,8 +223,8 @@ export default function BRNLookup() {
                           { label: "Amount Unpaid", value: s.amountUnpaid != null ? `Rs ${Number(s.amountUnpaid).toLocaleString()}` : null },
                           { label: "Par Value", value: s.parValue != null ? `Rs ${Number(s.parValue).toLocaleString()}` : null },
                         ].filter(r => r.value).map(row => (
-                          <div key={row.label} style={{ display: "flex", gap: 8, marginBottom: 4 }}>
-                            <span style={{ fontSize: 12, color: "#9ca3af", minWidth: 140, flexShrink: 0 }}>{row.label}</span>
+                          <div key={row.label} style={{ display: "flex", gap: 8, padding: "4px 0", borderBottom: "1px solid #e5e7eb" }}>
+                            <span style={{ fontSize: 12, color: "#9ca3af", minWidth: 150, flexShrink: 0 }}>{row.label}</span>
                             <span style={{ fontSize: 13, fontWeight: 600, color: NAVY }}>{row.value}</span>
                           </div>
                         ))}
@@ -239,7 +237,7 @@ export default function BRNLookup() {
 
             <div style={{ marginTop: 16 }}>
               <a
-                href={`https://onlinesearch.mns.mu`}
+                href="https://onlinesearch.mns.mu"
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 13, color: CORAL, fontWeight: 600, textDecoration: "underline" }}
