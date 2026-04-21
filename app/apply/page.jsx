@@ -11,7 +11,7 @@ const GREEN = "#0F7B3F";
 const BLUE = "#1E5AA0";
 
 const SCHEMES = [
-  { id: "tinns", name: "TINNS — Technology & Innovation Scheme", agency: "SME Mauritius", max: "Rs 150,000" },
+  { id: "tins", name: "TINS — Technology & Innovation Scheme", agency: "SME Mauritius", max: "Rs 150,000" },
   { id: "icds", name: "ICDS — Internal Capability Development Scheme", agency: "SME Mauritius", max: "Rs 200,000" },
   { id: "bts", name: "BTS — Business Transformation Scheme", agency: "SME Mauritius", max: "Rs 150,000" },
   { id: "marketing", name: "Marketing & Branding Scheme", agency: "SME Mauritius", max: "Rs 150,000" },
