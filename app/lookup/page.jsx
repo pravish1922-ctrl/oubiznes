@@ -13,6 +13,8 @@ export default function BRNLookup() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState(null);
   const [selected, setSelected] = useState(null);
+  const [detail, setDetail] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
