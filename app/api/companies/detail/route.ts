@@ -9,28 +9,53 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    // MNS detail endpoint — POST with orgNo in body
     const res = await fetch(
-      `https://onlinesearch.mns.mu/onlinesearch/viewCompanyDetails?orgNo=${orgNo}`,
+      "https://onlinesearch.mns.mu/onlinesearch/viewCompanyDetails",
       {
-        method: "GET",
+        method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "User-Agent": "Mozilla/5.0",
-          Referer: "https://onlinesearch.mns.mu/",
-          Origin: "https://onlinesearch.mns.mu",
+          "Accept": "application/json, text/plain, */*",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+          "Referer": "https://onlinesearch.mns.mu/",
+          "Origin": "https://onlinesearch.mns.mu",
         },
+        body: JSON.stringify({ orgNo: Number(orgNo) }),
       }
     );
 
     if (!res.ok) {
-      return NextResponse.json(
-        { error: `MNS API error: ${res.status}` },
-        { status: res.status }
+      // Fallback: try GET with query param
+      const res2 = await fetch(
+        `https://onlinesearch.mns.mu/onlinesearch/viewCompanyDetails?orgNo=${orgNo}`,
+        {
+          method: "GET",
+          headers: {
+            "Accept": "application/json, text/plain, */*",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "Referer": "https://onlinesearch.mns.mu/",
+            "Origin": "https://onlinesearch.mns.mu",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        }
       );
+
+      if (!res2.ok) {
+        const text = await res2.text();
+        return NextResponse.json(
+          { error: `MNS API error: ${res2.status}`, detail: text },
+          { status: res2.status }
+        );
+      }
+
+      const data2 = await res2.json();
+      return NextResponse.json(data2);
     }
 
     const data = await res.json();
     return NextResponse.json(data);
+
   } catch (err) {
     console.error("Detail fetch error:", err);
     return NextResponse.json(
