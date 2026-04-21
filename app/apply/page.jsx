@@ -244,7 +244,7 @@ export default function GrantApply() {
       <header className="border-b border-gray-200 bg-white print:hidden">
         <div style={{ maxWidth: 720, margin: "0 auto", padding: "12px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <span style={{ fontWeight: 800, fontSize: 18, color: CORAL }}>OuBiznes</span>
+            <Link href="/" style={{ textDecoration: "none", color: "inherit" }}><span style={{ fontWeight: 800, fontSize: 18, color: CORAL }}>OuBiznes</span></Link>
             <span style={{ fontWeight: 800, fontSize: 18, color: NAVY }}>.mu</span>
             <span style={{ marginLeft: 10, fontSize: 14, color: "#6b7280" }}>Grant Application Generator</span>
           </div>
