@@ -128,11 +128,13 @@ export default function ComplianceCalendar() {
       {/* Header */}
       <header className="border-b border-gray-200 bg-white print:hidden">
         <div style={{ maxWidth: 800, margin: "0 auto", padding: "12px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <Link href="/" style={{ textDecoration: "none", color: "inherit" }}>
           <div>
             <span style={{ fontWeight: 800, fontSize: 18, color: CORAL }}>OuBiznes</span>
             <span style={{ fontWeight: 800, fontSize: 18, color: NAVY }}>.mu</span>
             <span style={{ marginLeft: 10, fontSize: 14, color: "#6b7280" }}>Compliance Calendar 2026</span>
           </div>
+          </Link>
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={generateICS} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 13, color: "#fff", background: CORAL, border: "none", borderRadius: 8, padding: "6px 14px", cursor: "pointer", fontWeight: 600 }}>
               <Download size={14} /> Download .ics
