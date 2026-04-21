@@ -59,11 +59,13 @@ export default function VATCalculator() {
       {/* Header */}
       <header className="border-b border-gray-200 bg-white print:hidden">
         <div style={{ maxWidth: 640, margin: "0 auto", padding: "12px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <Link href="/" style={{ textDecoration: "none", color: "inherit" }}>
           <div>
             <span style={{ fontWeight: 800, fontSize: 18, color: CORAL }}>OuBiznes</span>
             <span style={{ fontWeight: 800, fontSize: 18, color: NAVY }}>.mu</span>
             <span style={{ marginLeft: 10, fontSize: 14, color: "#6b7280" }}>VAT Calculator</span>
           </div>
+          </Link>
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={reset} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 13, color: "#6b7280", background: "none", border: "none", cursor: "pointer" }}>
               <RotateCcw size={14} /> Reset
