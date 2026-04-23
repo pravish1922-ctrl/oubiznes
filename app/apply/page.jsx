@@ -297,7 +297,7 @@ export default function GrantApply() {
             {[
               { key: "name", label: "Business name *", placeholder: "e.g. Sunshine Bakery Ltd" },
               { key: "brn", label: "BRN number", placeholder: "e.g. C12345678" },
-              { key: "ownerName", label: "Owner / Director name *", placeholder: "e.g. Priya Ramnarain" },
+              { key: "ownerName", label: "Owner / Director name *", placeholder: "e.g. Pria Ramnen" },
               { key: "ownerTitle", label: "Title", placeholder: "e.g. Managing Director" },
               { key: "sector", label: "Sector *", placeholder: "e.g. Food & Beverage, ICT, Retail" },
               { key: "location", label: "Location", placeholder: "e.g. Curepipe" },
