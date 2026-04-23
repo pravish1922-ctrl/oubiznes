@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Home, RotateCcw } from "lucide-react";
 import EmailCapture from "@/components/EmailCapture";
 
 const NAVY = "#0A1628";
@@ -46,48 +45,23 @@ async function generatePlan(formData) {
   return data.plan;
 }
 
-function convertMarkdownToWord(markdownText, businessName) {
-  // Convert markdown to basic HTML for Word
-  let html = markdownText
-    .replace(/## /g, "<h2 style='margin-top: 16pt; margin-bottom: 8pt; font-size: 14pt; font-weight: bold;'>")
-    .replace(/\n\n/g, "</h2><p>")
-    .replace(/\n/g, "<br/>")
-    .replace(/\*\*(.*?)\*\*/g, "<b>$1</b>")
-    .replace(/\*(.*?)\*/g, "<i>$1</i>");
-
-  // Wrap in HTML document
-  const fullHtml = `
-    <html xmlns="http://www.w3.org/1999/xhtml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word">
-    <head>
-      <meta charset="UTF-8" />
-      <title>${businessName} - Business Plan</title>
-      <style>
-        body { font-family: Calibri, Arial, sans-serif; line-height: 1.5; color: #333; margin: 20pt; }
-        h2 { color: #0A1628; margin-top: 16pt; margin-bottom: 8pt; font-size: 14pt; font-weight: bold; }
-        p { margin-bottom: 10pt; text-align: justify; }
-        br { line-height: 1.5; }
-      </style>
-    </head>
-    <body>
-      <h1 style="text-align: center; font-size: 20pt; color: #0D9488; margin-bottom: 20pt;">${businessName}</h1>
-      <p>${html}</p>
-    </body>
-    </html>
-  `;
-
-  return fullHtml;
-}
-
 function downloadAsWord(markdownText, businessName) {
-  const htmlContent = convertMarkdownToWord(markdownText, businessName);
-  const blob = new Blob([htmlContent], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+  // Convert markdown to plain text with line breaks
+  let plainText = markdownText
+    .replace(/## /g, "\n")
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/\*(.*?)\*/g, "$1");
+
+  // Create blob as plain text with line breaks
+  const blob = new Blob([plainText], { type: "text/plain;charset=utf-8" });
   const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${businessName.replace(/\s+/g, "_")}_Business_Plan.docx`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  link.setAttribute("download", `${businessName.replace(/\s+/g, "_")}_Business_Plan.txt`);
+  link.style.visibility = "hidden";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
   URL.revokeObjectURL(url);
 }
 
@@ -351,7 +325,7 @@ export default function BusinessPlanGenerator() {
                   {copied ? "✓ Copied" : "📋 Copy"}
                 </button>
                 <button onClick={handleDownloadWord} style={{ padding: "10px 16px", background: downloaded ? GREEN : BLUE, color: "#fff", border: "none", borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
-                  {downloaded ? "✓ Downloaded" : "📄 Word"}
+                  {downloaded ? "✓ Downloaded" : "📄 Download"}
                 </button>
               </div>
             </div>
