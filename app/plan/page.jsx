@@ -35,66 +35,22 @@ const SECTORS = [
 
 async function generatePlan(formData) {
   try {
-    const prompt = `You are a business consultant specializing in Mauritian SMEs. Generate a professional business plan based on the following information:
-
-Business Name: ${formData.name}
-Owner: ${formData.owner}
-Sector: ${formData.sector}
-Location: ${formData.location}
-Description: ${formData.description}
-
-Market:
-- Target customers: ${formData.targetCustomers}
-- Competitors: ${formData.competitors}
-- Customer acquisition: ${formData.customerAcquisition}
-
-Operations:
-- Employees planned: ${formData.employees}
-- Key suppliers/partners: ${formData.suppliers}
-- Challenges: ${formData.challenges}
-
-Financials:
-- Startup costs: Rs ${formData.startupCost}
-- Year 1 revenue target: Rs ${formData.year1Revenue}
-- Funding needed: ${formData.fundingNeeded ? `Rs ${formData.fundingAmount}` : "No"}
-
-Export plans: ${formData.exportPlans ? "Yes - " + formData.exportDetails : "No"}
-
-Create a structured business plan with these sections (use markdown formatting with ## for section headers):
-1. Executive Summary (2-3 sentences)
-2. Business Description
-3. Market Analysis (Mauritius context)
-4. Competitive Advantage
-5. Operations & Implementation Plan
-6. Financial Projections & Sustainability
-7. Funding Requirements & Relevant Grants (mention SME Mauritius, TINNS, ICDS if applicable)
-
-Make it practical, Mauritius-focused, and ready for bank/investor review. Reference MRA compliance and local regulations where relevant.`;
-
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
+    const response = await fetch("/api/business/plan", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 2000,
-        messages: [
-          { role: "user", content: prompt }
-        ],
-      }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(formData),
     });
 
     const data = await response.json();
-    
-    if (data.content && data.content[0] && data.content[0].text) {
-      return data.content[0].text;
-    } else {
-      throw new Error("No response from Claude");
+
+    if (!response.ok) {
+      throw new Error(data.error || "Failed to generate plan");
     }
+
+    return data.plan;
   } catch (error) {
     console.error("Error generating plan:", error);
-    throw new Error("Failed to generate business plan. Please try again.");
+    throw new Error(error instanceof Error ? error.message : "Failed to generate business plan. Please try again.");
   }
 }
 
@@ -128,7 +84,7 @@ export default function BusinessPlanGenerator() {
       setPlan(generatedPlan);
       setStep(4);
     } catch (err) {
-      setError(err.message);
+      setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
       setGenerating(false);
     }
@@ -153,8 +109,8 @@ export default function BusinessPlanGenerator() {
     setError("");
   }
 
-  const inputStyle = { width: "100%", padding: "11px 14px", fontSize: 14, border: "1.5px solid #e5e7eb", borderRadius: 10, outline: "none", color: NAVY, boxSizing: "border-box", marginBottom: 14 };
-  const labelStyle = { fontSize: 13, fontWeight: 600, color: "#374151", display: "block", marginBottom: 4 };
+  const inputStyle = { width: "100%", padding: "11px 14px", fontSize: 14, border: "1.5px solid #e5e7eb", borderRadius: 10, outline: "none", color: NAVY, boxSizing: "border-box" as const, marginBottom: 14 };
+  const labelStyle = { fontSize: 13, fontWeight: 600, color: "#374151", display: "block" as const, marginBottom: 4 };
 
   return (
     <div style={{ background: "linear-gradient(to bottom, #FAF5EE, #fff)", colorScheme: "light", minHeight: "100vh" }}>
