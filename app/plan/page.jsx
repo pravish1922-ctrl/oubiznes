@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Home, RotateCcw, Copy, Check, Loader } from "lucide-react";
+import { Home, RotateCcw } from "lucide-react";
 import EmailCapture from "@/components/EmailCapture";
 
 const NAVY = "#0A1628";
@@ -46,6 +46,51 @@ async function generatePlan(formData) {
   return data.plan;
 }
 
+function convertMarkdownToWord(markdownText, businessName) {
+  // Convert markdown to basic HTML for Word
+  let html = markdownText
+    .replace(/## /g, "<h2 style='margin-top: 16pt; margin-bottom: 8pt; font-size: 14pt; font-weight: bold;'>")
+    .replace(/\n\n/g, "</h2><p>")
+    .replace(/\n/g, "<br/>")
+    .replace(/\*\*(.*?)\*\*/g, "<b>$1</b>")
+    .replace(/\*(.*?)\*/g, "<i>$1</i>");
+
+  // Wrap in HTML document
+  const fullHtml = `
+    <html xmlns="http://www.w3.org/1999/xhtml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word">
+    <head>
+      <meta charset="UTF-8" />
+      <title>${businessName} - Business Plan</title>
+      <style>
+        body { font-family: Calibri, Arial, sans-serif; line-height: 1.5; color: #333; margin: 20pt; }
+        h2 { color: #0A1628; margin-top: 16pt; margin-bottom: 8pt; font-size: 14pt; font-weight: bold; }
+        p { margin-bottom: 10pt; text-align: justify; }
+        br { line-height: 1.5; }
+      </style>
+    </head>
+    <body>
+      <h1 style="text-align: center; font-size: 20pt; color: #0D9488; margin-bottom: 20pt;">${businessName}</h1>
+      <p>${html}</p>
+    </body>
+    </html>
+  `;
+
+  return fullHtml;
+}
+
+function downloadAsWord(markdownText, businessName) {
+  const htmlContent = convertMarkdownToWord(markdownText, businessName);
+  const blob = new Blob([htmlContent], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${businessName.replace(/\s+/g, "_")}_Business_Plan.docx`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 export default function BusinessPlanGenerator() {
   const [step, setStep] = useState(0);
   const [form, setForm] = useState({
@@ -70,6 +115,7 @@ export default function BusinessPlanGenerator() {
   const [plan, setPlan] = useState("");
   const [generating, setGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [downloaded, setDownloaded] = useState(false);
   const [error, setError] = useState("");
 
   const updateForm = (key, value) => {
@@ -98,6 +144,12 @@ export default function BusinessPlanGenerator() {
     navigator.clipboard.writeText(plan);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleDownloadWord = () => {
+    downloadAsWord(plan, form.name);
+    setDownloaded(true);
+    setTimeout(() => setDownloaded(false), 2000);
   };
 
   const reset = () => {
@@ -292,11 +344,16 @@ export default function BusinessPlanGenerator() {
 
         {step === 4 && plan && (
           <>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
               <h2 style={{ fontSize: 20, fontWeight: 800, color: NAVY, margin: 0 }}>📋 Your Business Plan</h2>
-              <button onClick={copyPlan} style={{ padding: "8px 16px", background: copied ? GREEN : CORAL, color: "#fff", border: "none", borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
-                {copied ? "✓ Copied" : "Copy"}
-              </button>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={copyPlan} style={{ padding: "10px 16px", background: copied ? GREEN : CORAL, color: "#fff", border: "none", borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+                  {copied ? "✓ Copied" : "📋 Copy"}
+                </button>
+                <button onClick={handleDownloadWord} style={{ padding: "10px 16px", background: downloaded ? GREEN : BLUE, color: "#fff", border: "none", borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+                  {downloaded ? "✓ Downloaded" : "📄 Word"}
+                </button>
+              </div>
             </div>
 
             <div style={{ background: "#fff", border: "1.5px solid #e5e7eb", borderRadius: 14, padding: 24, fontFamily: "Georgia, serif", fontSize: 14, lineHeight: 1.8, color: NAVY, whiteSpace: "pre-wrap", marginBottom: 20 }}>
