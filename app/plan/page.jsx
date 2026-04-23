@@ -109,8 +109,25 @@ export default function BusinessPlanGenerator() {
     setError("");
   }
 
-  const inputStyle = { width: "100%", padding: "11px 14px", fontSize: 14, border: "1.5px solid #e5e7eb", borderRadius: 10, outline: "none", color: NAVY, boxSizing: "border-box" as const, marginBottom: 14 };
-  const labelStyle = { fontSize: 13, fontWeight: 600, color: "#374151", display: "block" as const, marginBottom: 4 };
+  const inputStyle = {
+    width: "100%",
+    padding: "11px 14px",
+    fontSize: 14,
+    border: "1.5px solid #e5e7eb",
+    borderRadius: 10,
+    outline: "none",
+    color: NAVY,
+    boxSizing: "border-box" as const,
+    marginBottom: 14,
+  };
+
+  const labelStyle = {
+    fontSize: 13,
+    fontWeight: 600,
+    color: "#374151",
+    display: "block" as const,
+    marginBottom: 4,
+  };
 
   return (
     <div style={{ background: "linear-gradient(to bottom, #FAF5EE, #fff)", colorScheme: "light", minHeight: "100vh" }}>
@@ -291,7 +308,7 @@ export default function BusinessPlanGenerator() {
               </button>
             </div>
             
-            <div style={{ background: "#fff", border: "1.5px solid #e5e7eb", borderRadius: 14, padding: 24, fontFamily: "Georgia, serif", fontSize: 14, lineHeight: 1.8, color: NAVY, whiteSpace: "pre-wrap", marginBottom: 20 }}>
+            <div style={{ background: "#fff", border: "1.5px solid #e5e7eb", borderRadius: 14, padding: 24, fontFamily: "Georgia, serif", fontSize: 14, lineHeight: 1.8, color: NAVY, whiteSpace: "pre-wrap", marginBottom: 20, overflowX: "auto" }}>
               {plan}
             </div>
             
