@@ -1,4 +1,3 @@
-// app/api/business/plan/route.ts
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
@@ -61,12 +60,12 @@ Make it practical, Mauritius-focused, and ready for bank/investor review. Refere
     if (!response.ok) {
       console.error("Anthropic API error:", data);
       return NextResponse.json(
-        { error: "Failed to generate plan", details: data },
+        { error: data.error?.message || "Failed to generate plan" },
         { status: response.status }
       );
     }
 
-    if (data.content && data.content[0] && data.content[0].text) {
+    if (data.content && data.content[0] && data.content[0].type === "text") {
       return NextResponse.json({ plan: data.content[0].text });
     } else {
       return NextResponse.json(
@@ -77,7 +76,7 @@ Make it practical, Mauritius-focused, and ready for bank/investor review. Refere
   } catch (error) {
     console.error("Error:", error);
     return NextResponse.json(
-      { error: "Server error", details: String(error) },
+      { error: "Server error" },
       { status: 500 }
     );
   }
