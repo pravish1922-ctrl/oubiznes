@@ -210,7 +210,7 @@ export default function BusinessPlanGenerator() {
             <input type="text" value={form.name} onChange={(e) => updateForm("name", e.target.value)} placeholder="e.g. TechStart Mauritius Ltd" style={{ width: "100%", padding: "11px 14px", fontSize: 14, border: "1.5px solid #e5e7eb", borderRadius: 10, marginBottom: 14, boxSizing: "border-box" }} />
 
             <label style={{ fontSize: 13, fontWeight: 600, color: "#374151", display: "block", marginBottom: 4 }}>Owner/Director name *</label>
-            <input type="text" value={form.owner} onChange={(e) => updateForm("owner", e.target.value)} placeholder="e.g. Priya Ramnarain" style={{ width: "100%", padding: "11px 14px", fontSize: 14, border: "1.5px solid #e5e7eb", borderRadius: 10, marginBottom: 14, boxSizing: "border-box" }} />
+            <input type="text" value={form.owner} onChange={(e) => updateForm("owner", e.target.value)} placeholder="e.g. Pria Ramnen" style={{ width: "100%", padding: "11px 14px", fontSize: 14, border: "1.5px solid #e5e7eb", borderRadius: 10, marginBottom: 14, boxSizing: "border-box" }} />
 
             <label style={{ fontSize: 13, fontWeight: 600, color: "#374151", display: "block", marginBottom: 4 }}>Sector *</label>
             <select value={form.sector} onChange={(e) => updateForm("sector", e.target.value)} style={{ width: "100%", padding: "11px 14px", fontSize: 14, border: "1.5px solid #e5e7eb", borderRadius: 10, marginBottom: 20, boxSizing: "border-box" }}>
