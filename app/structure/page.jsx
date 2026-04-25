@@ -298,6 +298,10 @@ export default function StructureAdvisor() {
         {isDone && recommendation && (
           <div>
             <p style={{ fontSize: 13, color: "#6b7280", marginBottom: 8 }}>Your recommendation</p>
+            <div style={{ background: "#FFF8F0", border: "1px solid #fde8d8", borderRadius: 10, padding: "12px 16px", marginBottom: 16, display: "flex", gap: 10 }}>
+              <AlertCircle size={16} style={{ color: "#92400e", flexShrink: 0, marginTop: 2 }} />
+              <p style={{ fontSize: 13, color: "#92400e", margin: 0, lineHeight: 1.6 }}>This is general guidance only, not legal advice. A lawyer or accountant can review your specific situation before you commit to a structure.</p>
+            </div>
             <div style={{ background: "#fff", border: `2px solid ${CORAL}`, borderRadius: 16, padding: 28, marginBottom: 20 }}>
               <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 16 }}>
                 <h2 style={{ fontSize: 22, fontWeight: 800, color: NAVY, margin: 0 }}>{recommendation.primary}</h2>
@@ -335,10 +339,6 @@ export default function StructureAdvisor() {
               <a href={recommendation.official} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 6, color: CORAL, fontWeight: 700, fontSize: 14, textDecoration: "underline" }}>
                 {recommendation.officialLabel || "Go to official registration portal →"}
               </a>
-            </div>
-            <div style={{ background: "#FFF8F0", border: "1px solid #fde8d8", borderRadius: 10, padding: "12px 16px", marginBottom: 20, display: "flex", gap: 10 }}>
-              <AlertCircle size={16} style={{ color: "#92400e", flexShrink: 0, marginTop: 2 }} />
-              <p style={{ fontSize: 13, color: "#92400e", margin: 0, lineHeight: 1.6 }}>This is general guidance only, not legal advice. A lawyer or accountant can review your specific situation before you commit to a structure.</p>
             </div>
             <div style={{ background: "#fff", border: "1.5px solid #e5e7eb", borderRadius: 12, padding: "16px 20px", marginBottom: 20 }}>
               <p style={{ fontSize: 14, fontWeight: 700, color: NAVY, marginBottom: 6 }}>What grants can your new business access?</p>

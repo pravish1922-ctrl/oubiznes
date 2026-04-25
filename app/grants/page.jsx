@@ -529,8 +529,12 @@ export default function GrantsFinder() {
               </div>
             )}
             
+            <div style={{ background: "#f0f9ff", border: "1px solid #bae6fd", borderRadius: 10, padding: "12px 16px", marginBottom: 16, fontSize: 13, color: "#0369a1" }}>
+              ℹ️ This tool covers 20 real Mauritian schemes. Data verified April 2026. Always confirm eligibility directly with the agency before applying — scheme terms can change.
+            </div>
+
             <EmailCapture source="/grants" message="Get alerts when new grants or schemes launch in Mauritius." />
-            
+
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               {results.map((scheme, idx) => (
                 <div key={scheme.id} style={{
@@ -576,11 +580,6 @@ export default function GrantsFinder() {
               ))}
             </div>
 
-            <div style={{ marginTop: 32, background: "#f9fafb", borderRadius: 12, padding: "16px 20px" }}>
-              <p style={{ fontSize: 13, color: "#6b7280" }}>
-                🇲🇺 This tool covers 20 real Mauritian schemes. Data verified April 2026. Always confirm with the agency before applying. Scheme terms can change.
-              </p>
-            </div>
           </>
         )}
       </div>

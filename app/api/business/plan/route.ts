@@ -60,7 +60,9 @@ Create a structured business plan with these sections (use markdown formatting w
 6. Financial Projections & Sustainability
 7. Funding Requirements & Relevant Grants (mention SME Mauritius, TINNS, ICDS if applicable)
 
-Make it practical, Mauritius-focused, and ready for bank/investor review. Reference MRA compliance and local regulations where relevant.`;
+Make it practical, Mauritius-focused, and ready for bank/investor review. Reference MRA compliance and local regulations where relevant.
+
+Use all provided data naturally in flowing professional prose. Never use square bracket placeholders like [Business Name] or [Location]. If a field value seems incomplete, incorporate it naturally or write 'to be confirmed by the owner'. Never invent employee numbers, locations, or supplier names not provided by the user.`;
 
     const result = await callGemini("gemini-2.5-flash", prompt);
 

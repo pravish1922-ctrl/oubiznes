@@ -19,7 +19,7 @@ const PAYE_BRACKETS = [
 
 // Social contributions 2025/26
 const CSG_EMPLOYEE = 0.01;   // CSG Levy 1% on basic
-const CSG_EMPLOYER = 0.015;  // CSG Employer 1.5% on basic
+// CSG Employer: 3% if basic ≤ Rs 50,000, 6% if basic > Rs 50,000 (MRA 2025/26)
 const NSF_EMPLOYEE = 0.01;   // NSF 1% on basic (capped at ceiling)
 const NSF_EMPLOYER = 0.025;  // NSF Employer 2.5% on basic (capped)
 const TRAINING_LEVY = 0.015; // Training Levy 1.5% employer on basic
@@ -109,7 +109,8 @@ export default function PAYECalculator() {
 
   // CSG on basic only
   const csgEmployee = basicNum * CSG_EMPLOYEE;
-  const csgEmployer = basicNum * CSG_EMPLOYER;
+  const csgEmployerRate = basicNum <= 50000 ? 0.03 : 0.06;
+  const csgEmployer = basicNum * csgEmployerRate;
 
   // NSF on basic only
   const nsfEmployee = basicNum * NSF_EMPLOYEE;
@@ -268,7 +269,7 @@ export default function PAYECalculator() {
               <h3 style={{ fontSize: 14, fontWeight: 700, color: NAVY, marginBottom: 12 }}>Employer total cost</h3>
               {[
                 { label: "Gross pay to employee", value: fmt(grossMonthly) },
-                { label: "CSG Levy — Employer (1.5%)", value: fmt(csgEmployer), sub: "on basic" },
+                { label: "CSG Employer (3% or 6%) per MRA 2025/26", value: fmt(csgEmployer), sub: basicNum <= 50000 ? "3% — basic ≤ Rs 50,000" : "6% — basic > Rs 50,000" },
                 { label: "NSF — Employer (2.5%)", value: fmt(nsfEmployer), sub: "on basic (capped)" },
                 { label: "Training Levy (1.5%)", value: fmt(trainingLevy), sub: "on basic" },
                 { label: "TOTAL EMPLOYER COST", value: fmt(totalEmployerCost), bold: true, highlight: true },
@@ -320,9 +321,9 @@ export default function PAYECalculator() {
                     MRA requires <strong>cumulative PAYE</strong> calculation (year-to-date from July each year), not simple monthly. This calculator shows simple monthly for educational purposes only. Your actual PAYE depends on your EDF relief amounts (dependents, disabilities, mortgage, pension contributions, etc.) which are applied cumulatively.
                   </p>
 
-                  <p style={{ marginTop: 12 }}><strong>✓ CSG Levy (1% employee, 1.5% employer):</strong></p>
+                  <p style={{ marginTop: 12 }}><strong>✓ CSG (1% employee; 3% or 6% employer per MRA 2025/26):</strong></p>
                   <p style={{ marginLeft: 12, fontSize: 12 }}>
-                    Applied on basic salary only. {fmt(csgEmployee)} deducted from employee, {fmt(csgEmployer)} paid by employer.
+                    Applied on basic salary only. {fmt(csgEmployee)} deducted from employee. Employer pays {basicNum <= 50000 ? "3%" : "6%"} = {fmt(csgEmployer)} (basic salary {basicNum <= 50000 ? "≤" : ">"} Rs 50,000).
                   </p>
 
                   <p style={{ marginTop: 12 }}><strong>✓ NSF (1% employee, 2.5% employer):</strong></p>

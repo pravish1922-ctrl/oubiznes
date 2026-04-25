@@ -152,9 +152,16 @@ export default function ComplianceCalendar() {
           <span style={{ display: "block" }}>MRA Compliance</span>
           <span style={{ display: "block", color: CORAL }}>Calendar 2026</span>
         </h1>
-        <p style={{ fontSize: 15, color: "#6b7280", marginBottom: 28 }}>
+        <p style={{ fontSize: 15, color: "#6b7280", marginBottom: 16 }}>
           Every VAT, PAYE, TDS, APS and annual filing deadline for Mauritius. Download to Google or Apple Calendar.
         </p>
+
+        <div style={{ background: "#f0f9ff", border: "1px solid #bae6fd", borderRadius: 10, padding: "12px 16px", marginBottom: 24, fontSize: 13, color: "#0369a1" }}>
+          ℹ️ Deadlines sourced from MRA Mauritius. Always verify at{" "}
+          <a href="https://www.mra.mu/important-dates" target="_blank" rel="noopener noreferrer" style={{ color: "#0369a1", fontWeight: 700, textDecoration: "underline" }}>
+            mra.mu/important-dates
+          </a>. Last updated April 2026.
+        </div>
 
         {/* Type filters */}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 20 }}>
@@ -232,14 +239,6 @@ export default function ComplianceCalendar() {
           })}
         </div>
 
-        <div style={{ marginTop: 28, background: "#f9fafb", borderRadius: 12, padding: "14px 18px" }}>
-          <p style={{ fontSize: 13, color: "#6b7280" }}>
-            🇲🇺 Deadlines sourced from MRA Mauritius. Always verify at{" "}
-            <a href="https://www.mra.mu/important-dates" target="_blank" rel="noopener noreferrer" style={{ color: CORAL, textDecoration: "underline", display: "inline-flex", alignItems: "center", gap: 3 }}>
-              mra.mu/important-dates <ExternalLink size={12} />
-            </a>. Last updated April 2026.
-          </p>
-        </div>
       </div>
       <EmailCapture source="/calendar" message="Get alerted when MRA deadlines or tax rules are updated." />
       <footer className="bg-white border-t border-gray-200 print:hidden" style={{ padding: "16px 24px", textAlign: "center" }}>

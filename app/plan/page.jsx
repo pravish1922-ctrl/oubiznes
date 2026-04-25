@@ -55,7 +55,7 @@ function parseSections(planText) {
       const content = firstNewline === -1 ? "" : part.substring(firstNewline + 1).trim();
       return { title, content };
     })
-    .filter((s) => s.content.length > 30);
+    .filter((s) => s.content.length >= 20);
 }
 
 function buildDocxParagraphs(markdown, { Paragraph, TextRun, HeadingLevel }) {
@@ -210,7 +210,7 @@ export default function BusinessPlanGenerator() {
     setDownloadingBank(true);
     try {
       const bankSections = sections.filter((s) =>
-        /executive summary/i.test(s.title) || /financial projections/i.test(s.title)
+        /executive summary/i.test(s.title) || /financial/i.test(s.title)
       );
       await downloadFullPlanAsDocx(bankSections, form.name + "_Bank_Submission");
     } finally {
@@ -369,7 +369,18 @@ export default function BusinessPlanGenerator() {
 
         {step === 3 && (
           <>
-            <h2 style={{ fontSize: 20, fontWeight: 800, color: NAVY, marginBottom: 20 }}>💰 Financials</h2>
+            <h2 style={{ fontSize: 20, fontWeight: 800, color: NAVY, marginBottom: 16 }}>💰 Financials</h2>
+
+            <div style={{ background: "#fef9ec", border: "1px solid #fde68a", borderRadius: 10, padding: "12px 16px", marginBottom: 14, fontSize: 14, color: "#92400e" }}>
+              ⚠️ Please ensure all figures are accurate. A bank or SMEDA officer will verify this information.
+            </div>
+
+            {((form.startupCost && parseFloat(form.startupCost) < 10000) || (form.year1Revenue && parseFloat(form.year1Revenue) < 10000)) && (
+              <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 10, padding: "12px 16px", marginBottom: 14, fontSize: 14, color: "#dc2626" }}>
+                ⚠️ These figures seem very low for a business plan. Please double-check before generating.
+              </div>
+            )}
+
             <label style={{ fontSize: 13, fontWeight: 600, color: "#374151", display: "block", marginBottom: 4 }}>Startup costs (Rs)</label>
             <input type="number" value={form.startupCost} onChange={(e) => updateForm("startupCost", e.target.value)} placeholder="e.g. 500000" style={{ width: "100%", padding: "11px 14px", fontSize: 14, border: "1.5px solid #e5e7eb", borderRadius: 10, marginBottom: 14, boxSizing: "border-box" }} />
 
@@ -417,7 +428,7 @@ export default function BusinessPlanGenerator() {
 
             {sections.map((section, i) => (
               <div key={i} style={{ background: "#fff", border: "1.5px solid #e5e7eb", borderRadius: 14, marginBottom: 16, overflow: "hidden" }}>
-                <div style={{ background: NAVY, padding: "12px 20px" }}>
+                <div style={{ background: "#1a2332", padding: "12px 20px" }}>
                   <h3 style={{ color: "#fff", fontSize: 15, fontWeight: 700, margin: 0 }}>{section.title}</h3>
                 </div>
                 <div className="plan-section-content" style={{ padding: "16px 20px", fontSize: 14, color: NAVY, lineHeight: 1.75, fontFamily: "Georgia, serif" }}>
