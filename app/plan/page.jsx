@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import ReactMarkdown from "react-markdown";
 import EmailCapture from "@/components/EmailCapture";
 
 const NAVY = "#0A1628";
@@ -39,30 +40,112 @@ async function generatePlan(formData) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(formData),
   });
-
   const data = await response.json();
   if (!response.ok) throw new Error(data.error || "Failed to generate plan");
   return data.plan;
 }
 
-function downloadAsWord(markdownText, businessName) {
-  // Convert markdown to plain text with line breaks
-  let plainText = markdownText
-    .replace(/## /g, "\n")
-    .replace(/\*\*(.*?)\*\*/g, "$1")
-    .replace(/\*(.*?)\*/g, "$1");
+function parseSections(planText) {
+  const parts = planText.split(/(?:^|\n)## /);
+  return parts
+    .filter((p) => p.trim())
+    .map((part) => {
+      const firstNewline = part.indexOf("\n");
+      const title = (firstNewline === -1 ? part : part.substring(0, firstNewline)).trim();
+      const content = firstNewline === -1 ? "" : part.substring(firstNewline + 1).trim();
+      return { title, content };
+    })
+    .filter((s) => s.content.length > 30);
+}
 
-  // Create blob as plain text with line breaks
-  const blob = new Blob([plainText], { type: "text/plain;charset=utf-8" });
+function buildDocxParagraphs(markdown, { Paragraph, TextRun, HeadingLevel }) {
+  function parseInline(text) {
+    const runs = [];
+    const regex = /(\*\*[^*]+\*\*|\*[^*]+\*)/g;
+    let lastIndex = 0;
+    let match;
+    while ((match = regex.exec(text)) !== null) {
+      if (match.index > lastIndex) {
+        runs.push(new TextRun({ text: text.slice(lastIndex, match.index) }));
+      }
+      const inner = match[0];
+      if (inner.startsWith("**")) {
+        runs.push(new TextRun({ text: inner.slice(2, -2), bold: true }));
+      } else {
+        runs.push(new TextRun({ text: inner.slice(1, -1), italics: true }));
+      }
+      lastIndex = match.index + match[0].length;
+    }
+    if (lastIndex < text.length) {
+      runs.push(new TextRun({ text: text.slice(lastIndex) }));
+    }
+    return runs.length > 0 ? runs : [new TextRun({ text: "" })];
+  }
+
+  const lines = markdown.split("\n");
+  const paragraphs = [];
+
+  for (const line of lines) {
+    if (!line.trim()) {
+      paragraphs.push(new Paragraph({ text: "" }));
+      continue;
+    }
+    if (line.startsWith("### ")) {
+      paragraphs.push(new Paragraph({ text: line.slice(4), heading: HeadingLevel.HEADING_3 }));
+      continue;
+    }
+    if (line.startsWith("#### ")) {
+      paragraphs.push(new Paragraph({ text: line.slice(5), heading: HeadingLevel.HEADING_4 }));
+      continue;
+    }
+    if (/^[-*] /.test(line)) {
+      paragraphs.push(new Paragraph({ bullet: { level: 0 }, children: parseInline(line.slice(2)) }));
+      continue;
+    }
+    paragraphs.push(new Paragraph({ children: parseInline(line) }));
+  }
+
+  return paragraphs;
+}
+
+function triggerDownload(blob, filename) {
   const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.setAttribute("href", url);
-  link.setAttribute("download", `${businessName.replace(/\s+/g, "_")}_Business_Plan.txt`);
-  link.style.visibility = "hidden";
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
   URL.revokeObjectURL(url);
+}
+
+async function downloadSectionAsDocx(section, businessName) {
+  const docx = await import("docx");
+  const { Document, Packer, Paragraph, HeadingLevel } = docx;
+  const doc = new Document({
+    sections: [{
+      children: [
+        new Paragraph({ text: section.title, heading: HeadingLevel.HEADING_1 }),
+        ...buildDocxParagraphs(section.content, docx),
+      ],
+    }],
+  });
+  const blob = await Packer.toBlob(doc);
+  triggerDownload(blob, `${businessName.replace(/\s+/g, "_")}_${section.title.replace(/\s+/g, "_")}.docx`);
+}
+
+async function downloadFullPlanAsDocx(sections, businessName) {
+  const docx = await import("docx");
+  const { Document, Packer, Paragraph, HeadingLevel } = docx;
+  const children = [];
+  for (const section of sections) {
+    children.push(
+      new Paragraph({ text: section.title, heading: HeadingLevel.HEADING_1 }),
+      ...buildDocxParagraphs(section.content, docx),
+      new Paragraph({ text: "" }),
+    );
+  }
+  const doc = new Document({ sections: [{ children }] });
+  const blob = await Packer.toBlob(doc);
+  triggerDownload(blob, `${businessName.replace(/\s+/g, "_")}_Business_Plan.docx`);
 }
 
 export default function BusinessPlanGenerator() {
@@ -87,14 +170,13 @@ export default function BusinessPlanGenerator() {
     exportDetails: "",
   });
   const [plan, setPlan] = useState("");
+  const [sections, setSections] = useState([]);
   const [generating, setGenerating] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [downloaded, setDownloaded] = useState(false);
+  const [downloadingFull, setDownloadingFull] = useState(false);
+  const [downloadingBank, setDownloadingBank] = useState(false);
   const [error, setError] = useState("");
 
-  const updateForm = (key, value) => {
-    setForm((prev) => ({ ...prev, [key]: value }));
-  };
+  const updateForm = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
 
   const handleGenerate = async () => {
     if (!form.name || !form.owner || !form.sector) {
@@ -106,6 +188,7 @@ export default function BusinessPlanGenerator() {
     try {
       const generatedPlan = await generatePlan(form);
       setPlan(generatedPlan);
+      setSections(parseSections(generatedPlan));
       setStep(4);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
@@ -114,16 +197,25 @@ export default function BusinessPlanGenerator() {
     }
   };
 
-  const copyPlan = () => {
-    navigator.clipboard.writeText(plan);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleDownloadFull = async () => {
+    setDownloadingFull(true);
+    try {
+      await downloadFullPlanAsDocx(sections, form.name);
+    } finally {
+      setDownloadingFull(false);
+    }
   };
 
-  const handleDownloadWord = () => {
-    downloadAsWord(plan, form.name);
-    setDownloaded(true);
-    setTimeout(() => setDownloaded(false), 2000);
+  const handleDownloadBank = async () => {
+    setDownloadingBank(true);
+    try {
+      const bankSections = sections.filter((s) =>
+        /executive summary/i.test(s.title) || /financial projections/i.test(s.title)
+      );
+      await downloadFullPlanAsDocx(bankSections, form.name + "_Bank_Submission");
+    } finally {
+      setDownloadingBank(false);
+    }
   };
 
   const reset = () => {
@@ -148,6 +240,7 @@ export default function BusinessPlanGenerator() {
       exportDetails: "",
     });
     setPlan("");
+    setSections([]);
     setError("");
   };
 
@@ -201,7 +294,11 @@ export default function BusinessPlanGenerator() {
           ))}
         </div>
 
-        {error && <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 10, padding: "12px 16px", marginBottom: 20, color: "#dc2626", fontSize: 14 }}>{error}</div>}
+        {error && (
+          <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 10, padding: "12px 16px", marginBottom: 20, color: "#dc2626", fontSize: 14 }}>
+            {error}
+          </div>
+        )}
 
         {step === 0 && (
           <>
@@ -216,9 +313,7 @@ export default function BusinessPlanGenerator() {
             <select value={form.sector} onChange={(e) => updateForm("sector", e.target.value)} style={{ width: "100%", padding: "11px 14px", fontSize: 14, border: "1.5px solid #e5e7eb", borderRadius: 10, marginBottom: 20, boxSizing: "border-box" }}>
               <option value="">Select a sector</option>
               {SECTORS.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
+                <option key={s} value={s}>{s}</option>
               ))}
             </select>
 
@@ -247,12 +342,8 @@ export default function BusinessPlanGenerator() {
             <textarea value={form.customerAcquisition} onChange={(e) => updateForm("customerAcquisition", e.target.value)} placeholder="e.g. Digital marketing, networking" style={{ width: "100%", padding: "11px 14px", fontSize: 14, border: "1.5px solid #e5e7eb", borderRadius: 10, marginBottom: 20, boxSizing: "border-box", minHeight: 80, resize: "vertical" }} />
 
             <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => setStep(0)} style={{ flex: 1, padding: "14px", background: "#fff", color: NAVY, border: "2px solid #e5e7eb", borderRadius: 12, fontWeight: 700, fontSize: 15, cursor: "pointer" }}>
-                ← Back
-              </button>
-              <button onClick={() => setStep(2)} style={{ flex: 1, padding: "14px", background: CORAL, color: "#fff", border: "none", borderRadius: 12, fontWeight: 700, fontSize: 15, cursor: "pointer" }}>
-                Next: Operations →
-              </button>
+              <button onClick={() => setStep(0)} style={{ flex: 1, padding: "14px", background: "#fff", color: NAVY, border: "2px solid #e5e7eb", borderRadius: 12, fontWeight: 700, fontSize: 15, cursor: "pointer" }}>← Back</button>
+              <button onClick={() => setStep(2)} style={{ flex: 1, padding: "14px", background: CORAL, color: "#fff", border: "none", borderRadius: 12, fontWeight: 700, fontSize: 15, cursor: "pointer" }}>Next: Operations →</button>
             </div>
           </>
         )}
@@ -270,12 +361,8 @@ export default function BusinessPlanGenerator() {
             <textarea value={form.challenges} onChange={(e) => updateForm("challenges", e.target.value)} placeholder="e.g. Import costs, skilled staff" style={{ width: "100%", padding: "11px 14px", fontSize: 14, border: "1.5px solid #e5e7eb", borderRadius: 10, marginBottom: 20, boxSizing: "border-box", minHeight: 80, resize: "vertical" }} />
 
             <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => setStep(1)} style={{ flex: 1, padding: "14px", background: "#fff", color: NAVY, border: "2px solid #e5e7eb", borderRadius: 12, fontWeight: 700, fontSize: 15, cursor: "pointer" }}>
-                ← Back
-              </button>
-              <button onClick={() => setStep(3)} style={{ flex: 1, padding: "14px", background: CORAL, color: "#fff", border: "none", borderRadius: 12, fontWeight: 700, fontSize: 15, cursor: "pointer" }}>
-                Next: Financials →
-              </button>
+              <button onClick={() => setStep(1)} style={{ flex: 1, padding: "14px", background: "#fff", color: NAVY, border: "2px solid #e5e7eb", borderRadius: 12, fontWeight: 700, fontSize: 15, cursor: "pointer" }}>← Back</button>
+              <button onClick={() => setStep(3)} style={{ flex: 1, padding: "14px", background: CORAL, color: "#fff", border: "none", borderRadius: 12, fontWeight: 700, fontSize: 15, cursor: "pointer" }}>Next: Financials →</button>
             </div>
           </>
         )}
@@ -306,9 +393,7 @@ export default function BusinessPlanGenerator() {
             )}
 
             <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => setStep(2)} style={{ flex: 1, padding: "14px", background: "#fff", color: NAVY, border: "2px solid #e5e7eb", borderRadius: 12, fontWeight: 700, fontSize: 15, cursor: "pointer" }}>
-                ← Back
-              </button>
+              <button onClick={() => setStep(2)} style={{ flex: 1, padding: "14px", background: "#fff", color: NAVY, border: "2px solid #e5e7eb", borderRadius: 12, fontWeight: 700, fontSize: 15, cursor: "pointer" }}>← Back</button>
               <button onClick={handleGenerate} disabled={generating} style={{ flex: 1, padding: "14px", background: generating ? "#cbd5e1" : CORAL, color: "#fff", border: "none", borderRadius: 12, fontWeight: 700, fontSize: 15, cursor: generating ? "not-allowed" : "pointer" }}>
                 {generating ? "⟳ Generating..." : "Generate Plan →"}
               </button>
@@ -316,26 +401,33 @@ export default function BusinessPlanGenerator() {
           </>
         )}
 
-        {step === 4 && plan && (
+        {step === 4 && sections.length > 0 && (
           <>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 10 }}>
               <h2 style={{ fontSize: 20, fontWeight: 800, color: NAVY, margin: 0 }}>📋 Your Business Plan</h2>
               <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={copyPlan} style={{ padding: "10px 16px", background: copied ? GREEN : CORAL, color: "#fff", border: "none", borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
-                  {copied ? "✓ Copied" : "📋 Copy"}
+                <button onClick={handleDownloadFull} disabled={downloadingFull} style={{ padding: "10px 16px", background: downloadingFull ? "#0a5242" : "#0F6E56", color: "#fff", border: "none", borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: downloadingFull ? "not-allowed" : "pointer" }}>
+                  {downloadingFull ? "⟳ Building..." : "📄 Download Full Plan"}
                 </button>
-                <button onClick={handleDownloadWord} style={{ padding: "10px 16px", background: downloaded ? GREEN : BLUE, color: "#fff", border: "none", borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
-                  {downloaded ? "✓ Downloaded" : "📄 Download"}
+                <button onClick={handleDownloadBank} disabled={downloadingBank} style={{ padding: "10px 16px", background: "#fff", color: downloadingBank ? "#94a3b8" : "#0F6E56", border: `1.5px solid ${downloadingBank ? "#e5e7eb" : "#0F6E56"}`, borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: downloadingBank ? "not-allowed" : "pointer" }}>
+                  {downloadingBank ? "⟳ Building..." : "🏦 Download for Bank"}
                 </button>
               </div>
             </div>
 
-            <div style={{ background: "#fff", border: "1.5px solid #e5e7eb", borderRadius: 14, padding: 24, fontFamily: "Georgia, serif", fontSize: 14, lineHeight: 1.8, color: NAVY, whiteSpace: "pre-wrap", marginBottom: 20 }}>
-              {plan}
-            </div>
+            {sections.map((section, i) => (
+              <div key={i} style={{ background: "#fff", border: "1.5px solid #e5e7eb", borderRadius: 14, marginBottom: 16, overflow: "hidden" }}>
+                <div style={{ background: NAVY, padding: "12px 20px" }}>
+                  <h3 style={{ color: "#fff", fontSize: 15, fontWeight: 700, margin: 0 }}>{section.title}</h3>
+                </div>
+                <div className="plan-section-content" style={{ padding: "16px 20px", fontSize: 14, color: NAVY, lineHeight: 1.75, fontFamily: "Georgia, serif" }}>
+                  <ReactMarkdown>{section.content}</ReactMarkdown>
+                </div>
+              </div>
+            ))}
 
             <div style={{ background: "#fef9ec", border: "1px solid #fde68a", borderRadius: 12, padding: "14px 18px", marginBottom: 16 }}>
-              <p style={{ fontSize: 13, color: "#92400e" }}>
+              <p style={{ fontSize: 13, color: "#92400e", margin: 0 }}>
                 ⚠️ <strong>Review before use.</strong> This is an AI draft. Customize and review with a professional before submitting to banks.
               </p>
             </div>
@@ -354,17 +446,19 @@ export default function BusinessPlanGenerator() {
       <footer style={{ padding: "16px 24px", textAlign: "center", borderTop: "1px solid #e5e7eb", background: "white" }}>
         <p style={{ fontSize: 13, color: "#9ca3af" }}>
           © 2026 OuBiznes.mu ·{" "}
-          <a href="mailto:contact@oubiznes.mu" style={{ color: CORAL, textDecoration: "underline" }}>
-            Contact us
-          </a>
+          <a href="mailto:contact@oubiznes.mu" style={{ color: CORAL, textDecoration: "underline" }}>Contact us</a>
         </p>
       </footer>
 
       <style>{`
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
+        .plan-section-content p { margin: 0 0 10px; }
+        .plan-section-content p:last-child { margin-bottom: 0; }
+        .plan-section-content h3 { font-size: 15px; font-weight: 700; color: ${NAVY}; margin: 14px 0 6px; }
+        .plan-section-content h4 { font-size: 14px; font-weight: 600; color: #374151; margin: 10px 0 4px; }
+        .plan-section-content ul, .plan-section-content ol { margin: 0 0 10px; padding-left: 20px; }
+        .plan-section-content li { margin-bottom: 4px; line-height: 1.65; }
+        .plan-section-content strong { font-weight: 700; }
+        .plan-section-content em { font-style: italic; }
       `}</style>
     </div>
   );

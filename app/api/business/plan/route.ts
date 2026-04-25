@@ -1,5 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 
+async function callGemini(model: string, prompt: string) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+  });
+  const data = await res.json();
+  if (res.status === 429) {
+    return { text: "", rateLimited: true, error: null };
+  }
+  if (!res.ok) {
+    console.error(`Gemini API error (${model}):`, data);
+    return { text: "", rateLimited: false, error: data.error?.message || "Failed to generate plan" };
+  }
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+  if (!text) {
+    return { text: "", rateLimited: false, error: "No response from Gemini" };
+  }
+  return { text, rateLimited: false, error: null };
+}
+
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.json();
@@ -40,40 +62,22 @@ Create a structured business plan with these sections (use markdown formatting w
 
 Make it practical, Mauritius-focused, and ready for bank/investor review. Reference MRA compliance and local regulations where relevant.`;
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": process.env.ANTHROPIC_API_KEY || "",
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 2000,
-        messages: [
-          { role: "user", content: prompt }
-        ],
-      }),
-    });
+    const result = await callGemini("gemini-2.5-flash", prompt);
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      console.error("Anthropic API error:", data);
-      return NextResponse.json(
-        { error: data.error?.message || "Failed to generate plan" },
-        { status: response.status }
-      );
+    if (result.rateLimited) {
+      console.warn("gemini-2.5-flash rate limited, falling back to gemini-3.1-flash-lite-preview");
+      const fallback = await callGemini("gemini-3.1-flash-lite-preview", prompt);
+      if (fallback.error) {
+        return NextResponse.json({ error: fallback.error }, { status: 500 });
+      }
+      return NextResponse.json({ plan: fallback.text });
     }
 
-    if (data.content && data.content[0] && data.content[0].type === "text") {
-      return NextResponse.json({ plan: data.content[0].text });
-    } else {
-      return NextResponse.json(
-        { error: "No response from Claude" },
-        { status: 500 }
-      );
+    if (result.error) {
+      return NextResponse.json({ error: result.error }, { status: 500 });
     }
+
+    return NextResponse.json({ plan: result.text });
   } catch (error) {
     console.error("Error:", error);
     return NextResponse.json(
