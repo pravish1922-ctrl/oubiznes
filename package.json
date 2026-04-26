@@ -6,12 +6,14 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "regulatory-check": "node --env-file=.env.local scripts/regulatory-check.mjs"
   },
   "dependencies": {
     "docx": "^9.6.1",
     "lucide-react": "^0.379.0",
     "next": "^16.2.4",
+    "nodemailer": "^8.0.6",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-markdown": "^10.1.0"

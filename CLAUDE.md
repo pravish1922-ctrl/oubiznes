@@ -109,6 +109,11 @@ These rules are NON-NEGOTIABLE and must be applied everywhere:
 - `ANTHROPIC_API_KEY` — Anthropic Claude API
 - `GEMINI_API_KEY` — Google Gemini (primary for Business Plan)
 - `OPENROUTER_API_KEY` — OpenRouter (tested, unreliable free tier)
+- `SMTP_HOST` — Agent 5: outbound SMTP server (e.g. smtp.zoho.com)
+- `SMTP_PORT` — Agent 5: SMTP port (465 for SSL, 587 for TLS)
+- `SMTP_USER` — Agent 5: SMTP login / sender address
+- `SMTP_PASS` — Agent 5: SMTP password or app password
+- `REGULATORY_EMAIL_TO` — Agent 5: alert recipient (defaults to SMTP_USER if omitted)
 
 ### AI Model Strategy
 - Business Plan Generator primary: `gemini-2.5-flash`
@@ -122,11 +127,12 @@ These rules are NON-NEGOTIABLE and must be applied everywhere:
 
 ## 7. AGENT ARCHITECTURE (TO BUILD)
 
-### Agent 5 — Regulatory Update Agent (BUILD FIRST)
-- Runs monthly
-- Checks MRA, SMEDA, DBM, EDB official sources
-- Updates regulatory constants in codebase
-- Logs: what changed, when, source URL
+### Agent 5 — Regulatory Update Agent ✓ BUILT
+- Runs weekly every Monday at 08:00 (Windows Task Scheduler)
+- Script: `scripts/regulatory-check.mjs` — run with `npm run regulatory-check`
+- Checks MRA VAT, PAYE/CSG/NSF, HRDC, and Minimum Wage source pages
+- Generates 14-item manual checklist; emails alert via Zoho SMTP if automated check fails
+- Logs to `logs/regulatory/YYYY-MM-DD.json` (git-ignored)
 - Protects platform legally
 
 ### Agent 1 — Onboarding Agent
@@ -193,7 +199,7 @@ Always commit .env.local to .gitignore — never push API keys.
 - [ ] Compliance Calendar: full review and dynamic population
 - [ ] Grants Finder: full review, document checklist, official source links
 - [ ] Form validation: add numeric validation to ALL tool forms site-wide
-- [ ] Agent 5 (Regulatory Update): build first
+- [x] Agent 5 (Regulatory Update): built — scripts/regulatory-check.mjs
 - [ ] Agent 1 (Onboarding): build second
 - [ ] Agents 2, 3, 4: build in order
 - [ ] CLAUDE.md: keep Section 5 updated whenever MRA rules change
