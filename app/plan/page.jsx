@@ -34,6 +34,22 @@ const SECTORS = [
   "Other",
 ];
 
+function validateMoneyField(val) {
+  if (val === "" || val === undefined) return "";
+  const n = parseFloat(String(val).replace(/,/g, ""));
+  if (isNaN(n)) return "Please enter a valid number";
+  if (n < 0) return "Amount cannot be negative";
+  return "";
+}
+
+function validateCountField(val) {
+  if (val === "" || val === undefined) return "";
+  const n = parseFloat(String(val));
+  if (isNaN(n)) return "Please enter a valid number";
+  if (n < 0) return "Cannot be negative";
+  return "";
+}
+
 async function generatePlan(formData) {
   const response = await fetch("/api/business/plan", {
     method: "POST",
@@ -175,12 +191,28 @@ export default function BusinessPlanGenerator() {
   const [downloadingFull, setDownloadingFull] = useState(false);
   const [downloadingBank, setDownloadingBank] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({ employees: "", startupCost: "", year1Revenue: "", fundingAmount: "" });
+
+  function setFE(key, msg) {
+    setFieldErrors(prev => ({ ...prev, [key]: msg }));
+  }
 
   const updateForm = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
 
   const handleGenerate = async () => {
     if (!form.name || !form.owner || !form.sector) {
       setError("Please fill in Business Name, Owner Name, and Sector.");
+      return;
+    }
+    const errs = {
+      employees:   validateCountField(form.employees),
+      startupCost: validateMoneyField(form.startupCost),
+      year1Revenue: validateMoneyField(form.year1Revenue),
+      fundingAmount: form.fundingNeeded ? validateMoneyField(form.fundingAmount) : "",
+    };
+    setFieldErrors(errs);
+    if (Object.values(errs).some(e => e)) {
+      setError("Please correct the highlighted fields.");
       return;
     }
     setError("");
@@ -242,6 +274,7 @@ export default function BusinessPlanGenerator() {
     setPlan("");
     setSections([]);
     setError("");
+    setFieldErrors({ employees: "", startupCost: "", year1Revenue: "", fundingAmount: "" });
   };
 
   return (
@@ -352,7 +385,16 @@ export default function BusinessPlanGenerator() {
           <>
             <h2 style={{ fontSize: 20, fontWeight: 800, color: NAVY, marginBottom: 20 }}>⚙️ Operations</h2>
             <label style={{ fontSize: 13, fontWeight: 600, color: "#374151", display: "block", marginBottom: 4 }}>Employees planned</label>
-            <input type="number" value={form.employees} onChange={(e) => updateForm("employees", e.target.value)} placeholder="e.g. 5" style={{ width: "100%", padding: "11px 14px", fontSize: 14, border: "1.5px solid #e5e7eb", borderRadius: 10, marginBottom: 14, boxSizing: "border-box" }} />
+            {fieldErrors.employees && <p style={{ fontSize: 12, color: "#b91c1c", fontWeight: 600, margin: "0 0 4px" }}>{fieldErrors.employees}</p>}
+            <input
+              type="number"
+              min="0"
+              value={form.employees}
+              onChange={e => { updateForm("employees", e.target.value); if (fieldErrors.employees) setFE("employees", validateCountField(e.target.value)); }}
+              onBlur={e => setFE("employees", validateCountField(e.target.value))}
+              placeholder="e.g. 5"
+              style={{ width: "100%", padding: "11px 14px", fontSize: 14, border: `1.5px solid ${fieldErrors.employees ? "#FCA5A5" : "#e5e7eb"}`, borderRadius: 10, marginBottom: 14, boxSizing: "border-box" }}
+            />
 
             <label style={{ fontSize: 13, fontWeight: 600, color: "#374151", display: "block", marginBottom: 4 }}>Suppliers & partners</label>
             <textarea value={form.suppliers} onChange={(e) => updateForm("suppliers", e.target.value)} placeholder="e.g. Local manufacturers, vendors" style={{ width: "100%", padding: "11px 14px", fontSize: 14, border: "1.5px solid #e5e7eb", borderRadius: 10, marginBottom: 14, boxSizing: "border-box", minHeight: 80, resize: "vertical" }} />
@@ -375,24 +417,54 @@ export default function BusinessPlanGenerator() {
               ⚠️ Please ensure all figures are accurate. A bank or SMEDA officer will verify this information.
             </div>
 
-            {((form.startupCost && parseFloat(form.startupCost) < 10000) || (form.year1Revenue && parseFloat(form.year1Revenue) < 10000)) && (
-              <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 10, padding: "12px 16px", marginBottom: 14, fontSize: 14, color: "#dc2626" }}>
-                ⚠️ These figures seem very low for a business plan. Please double-check before generating.
+            {((form.startupCost && parseFloat(form.startupCost) > 0 && parseFloat(form.startupCost) < 10000) ||
+              (form.year1Revenue && parseFloat(form.year1Revenue) > 0 && parseFloat(form.year1Revenue) < 10000)) && (
+              <div style={{ background: "#FEE2E2", border: "1px solid #FCA5A5", borderRadius: 10, padding: "12px 16px", marginBottom: 14, fontSize: 14, color: "#b91c1c", fontWeight: 600 }}>
+                ⚠️ These figures seem very low for a business plan (minimum Rs 10,000 expected). Please double-check before generating.
               </div>
             )}
 
             <label style={{ fontSize: 13, fontWeight: 600, color: "#374151", display: "block", marginBottom: 4 }}>Startup costs (Rs)</label>
-            <input type="number" value={form.startupCost} onChange={(e) => updateForm("startupCost", e.target.value)} placeholder="e.g. 500000" style={{ width: "100%", padding: "11px 14px", fontSize: 14, border: "1.5px solid #e5e7eb", borderRadius: 10, marginBottom: 14, boxSizing: "border-box" }} />
+            {fieldErrors.startupCost && <p style={{ fontSize: 12, color: "#b91c1c", fontWeight: 600, margin: "0 0 4px" }}>{fieldErrors.startupCost}</p>}
+            <input
+              type="number"
+              min="0"
+              value={form.startupCost}
+              onChange={e => { updateForm("startupCost", e.target.value); if (fieldErrors.startupCost) setFE("startupCost", validateMoneyField(e.target.value)); }}
+              onBlur={e => setFE("startupCost", validateMoneyField(e.target.value))}
+              placeholder="e.g. 500000"
+              style={{ width: "100%", padding: "11px 14px", fontSize: 14, border: `1.5px solid ${fieldErrors.startupCost ? "#FCA5A5" : "#e5e7eb"}`, borderRadius: 10, marginBottom: 14, boxSizing: "border-box" }}
+            />
 
             <label style={{ fontSize: 13, fontWeight: 600, color: "#374151", display: "block", marginBottom: 4 }}>Year 1 revenue target (Rs)</label>
-            <input type="number" value={form.year1Revenue} onChange={(e) => updateForm("year1Revenue", e.target.value)} placeholder="e.g. 2000000" style={{ width: "100%", padding: "11px 14px", fontSize: 14, border: "1.5px solid #e5e7eb", borderRadius: 10, marginBottom: 14, boxSizing: "border-box" }} />
+            {fieldErrors.year1Revenue && <p style={{ fontSize: 12, color: "#b91c1c", fontWeight: 600, margin: "0 0 4px" }}>{fieldErrors.year1Revenue}</p>}
+            <input
+              type="number"
+              min="0"
+              value={form.year1Revenue}
+              onChange={e => { updateForm("year1Revenue", e.target.value); if (fieldErrors.year1Revenue) setFE("year1Revenue", validateMoneyField(e.target.value)); }}
+              onBlur={e => setFE("year1Revenue", validateMoneyField(e.target.value))}
+              placeholder="e.g. 2000000"
+              style={{ width: "100%", padding: "11px 14px", fontSize: 14, border: `1.5px solid ${fieldErrors.year1Revenue ? "#FCA5A5" : "#e5e7eb"}`, borderRadius: 10, marginBottom: 14, boxSizing: "border-box" }}
+            />
 
             <label style={{ fontSize: 13, fontWeight: 600, color: "#374151", display: "block", marginBottom: 4 }}>
               <input type="checkbox" checked={form.fundingNeeded} onChange={(e) => updateForm("fundingNeeded", e.target.checked)} style={{ marginRight: 8 }} />
               Need external funding?
             </label>
             {form.fundingNeeded && (
-              <input type="number" value={form.fundingAmount} onChange={(e) => updateForm("fundingAmount", e.target.value)} placeholder="Amount in Rs" style={{ width: "100%", padding: "11px 14px", fontSize: 14, border: "1.5px solid #e5e7eb", borderRadius: 10, marginBottom: 14, boxSizing: "border-box" }} />
+              <>
+                {fieldErrors.fundingAmount && <p style={{ fontSize: 12, color: "#b91c1c", fontWeight: 600, margin: "0 0 4px" }}>{fieldErrors.fundingAmount}</p>}
+                <input
+                  type="number"
+                  min="0"
+                  value={form.fundingAmount}
+                  onChange={e => { updateForm("fundingAmount", e.target.value); if (fieldErrors.fundingAmount) setFE("fundingAmount", validateMoneyField(e.target.value)); }}
+                  onBlur={e => setFE("fundingAmount", validateMoneyField(e.target.value))}
+                  placeholder="Amount in Rs"
+                  style={{ width: "100%", padding: "11px 14px", fontSize: 14, border: `1.5px solid ${fieldErrors.fundingAmount ? "#FCA5A5" : "#e5e7eb"}`, borderRadius: 10, marginBottom: 14, boxSizing: "border-box" }}
+                />
+              </>
             )}
 
             <label style={{ fontSize: 13, fontWeight: 600, color: "#374151", display: "block", marginBottom: 4 }}>

@@ -13,12 +13,21 @@ const BLUE = "#1E5AA0";
 const VAT_RATE = 0.15;
 const THRESHOLD = 3000000;
 
+function validateAmount(val) {
+  if (val === "" || val === undefined) return "";
+  const n = parseFloat(String(val).replace(/,/g, ""));
+  if (isNaN(n)) return "Please enter a valid number";
+  if (n < 0) return "Amount cannot be negative";
+  return "";
+}
+
 export default function VATCalculator() {
   const [mode, setMode] = useState("add"); // "add" = price excl VAT, "extract" = price incl VAT
   const [amount, setAmount] = useState("");
   const [rateType, setRateType] = useState("standard"); // standard | zero | exempt
+  const [amountError, setAmountError] = useState("");
 
-  const num = parseFloat(amount.replace(/,/g, "")) || 0;
+  const num = (!amountError && parseFloat(String(amount).replace(/,/g, ""))) || 0;
 
   let exclVAT = 0, vatAmount = 0, inclVAT = 0;
   if (rateType === "standard") {
@@ -42,6 +51,7 @@ export default function VATCalculator() {
 
   function reset() {
     setAmount("");
+    setAmountError("");
     setMode("add");
     setRateType("standard");
   }
@@ -136,6 +146,11 @@ export default function VATCalculator() {
 
         {/* Amount input */}
         <div style={{ marginBottom: 28 }}>
+          {amountError && (
+            <div style={{ background: "#FEE2E2", border: "1px solid #FCA5A5", borderRadius: 8, padding: "10px 14px", marginBottom: 12, fontSize: 14, color: "#b91c1c", fontWeight: 600 }}>
+              {amountError}
+            </div>
+          )}
           <label style={{ fontSize: 13, fontWeight: 700, color: "#374151", display: "block", marginBottom: 8 }}>
             {mode === "add" ? "Price excluding VAT (Rs)" : "Price including VAT (Rs)"}
           </label>
@@ -143,12 +158,16 @@ export default function VATCalculator() {
             <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontWeight: 700, color: "#6b7280" }}>Rs</span>
             <input
               type="number"
+              min="0"
               value={amount}
-              onChange={e => setAmount(e.target.value)}
+              onChange={e => {
+                setAmount(e.target.value);
+                if (amountError) setAmountError(validateAmount(e.target.value));
+              }}
+              onBlur={e => setAmountError(validateAmount(e.target.value))}
               placeholder="0.00"
-              style={{ width: "100%", padding: "14px 14px 14px 44px", fontSize: 22, fontWeight: 700, border: "2px solid #e5e7eb", borderRadius: 12, outline: "none", color: NAVY, boxSizing: "border-box" }}
-              onFocus={e => (e.target.style.borderColor = CORAL)}
-              onBlur={e => (e.target.style.borderColor = "#e5e7eb")}
+              style={{ width: "100%", padding: "14px 14px 14px 44px", fontSize: 22, fontWeight: 700, border: `2px solid ${amountError ? "#FCA5A5" : "#e5e7eb"}`, borderRadius: 12, outline: "none", color: NAVY, boxSizing: "border-box" }}
+              onFocus={e => (e.target.style.borderColor = amountError ? "#FCA5A5" : CORAL)}
             />
           </div>
         </div>

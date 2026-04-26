@@ -46,6 +46,14 @@ function calcPAYE(taxable) {
   return tax;
 }
 
+function validatePayeField(val) {
+  if (val === "" || val === undefined) return "";
+  const n = parseFloat(String(val).replace(/,/g, ""));
+  if (isNaN(n)) return "Please enter a valid number";
+  if (n < 0) return "Amount cannot be negative";
+  return "";
+}
+
 function WarningBox({ title, children }) {
   return (
     <div style={{ background: "#fef3c7", border: "1px solid #fbbf24", borderRadius: 10, padding: 12, marginBottom: 14, display: "flex", gap: 10 }}>
@@ -83,11 +91,18 @@ export default function PAYECalculator() {
   const [telecommuting, setTelecommuting] = useState("");
   const [other, setOther] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [errors, setErrors] = useState({ basic: "", travelling: "", telecommuting: "", other: "" });
 
-  const basicNum = parseFloat(basic.replace(/,/g, "")) || 0;
-  const travellingNum = parseFloat(travelling.replace(/,/g, "")) || 0;
-  const telecommutingNum = parseFloat(telecommuting.replace(/,/g, "")) || 0;
-  const otherNum = parseFloat(other.replace(/,/g, "")) || 0;
+  function setFieldError(key, msg) {
+    setErrors(prev => ({ ...prev, [key]: msg }));
+  }
+
+  const hasErrors = Object.values(errors).some(e => e);
+
+  const basicNum = (!errors.basic && parseFloat(String(basic).replace(/,/g, ""))) || 0;
+  const travellingNum = (!errors.travelling && parseFloat(String(travelling).replace(/,/g, ""))) || 0;
+  const telecommutingNum = (!errors.telecommuting && parseFloat(String(telecommuting).replace(/,/g, ""))) || 0;
+  const otherNum = (!errors.other && parseFloat(String(other).replace(/,/g, ""))) || 0;
 
   const grossMonthly = basicNum + travellingNum + telecommutingNum + otherNum;
 
@@ -130,6 +145,7 @@ export default function PAYECalculator() {
     setTravelling("");
     setTelecommuting("");
     setOther("");
+    setErrors({ basic: "", travelling: "", telecommuting: "", other: "" });
   }
 
   return (
@@ -175,8 +191,19 @@ export default function PAYECalculator() {
           This calculator shows <strong>simple monthly PAYE</strong> based on current year MRA brackets. Your employer may use <strong>cumulative PAYE</strong> (year-to-date) and apply your EDF relief amounts, which can significantly change your actual tax. NSF contributions may also be capped by your pension scheme. <strong>Always verify with your payroll team.</strong>
         </WarningBox>
 
+        {basicNum > 0 && basicNum < 16500 && (
+          <WarningBox title="⚠️ Below national minimum wage">
+            Basic salary of Rs {basicNum.toLocaleString()} is below the national minimum wage of <strong>Rs 16,500/month</strong> (effective 2025/26). Please verify the amount entered.
+          </WarningBox>
+        )}
+
         {/* Input section */}
         <div style={{ background: "#fff", border: "1.5px solid #e5e7eb", borderRadius: 14, padding: 20, marginBottom: 24 }}>
+          {hasErrors && (
+            <div style={{ background: "#FEE2E2", border: "1px solid #FCA5A5", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 13, color: "#b91c1c", fontWeight: 600 }}>
+              Please correct the highlighted fields before continuing.
+            </div>
+          )}
           <label style={{ fontSize: 12, fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: 0.5, display: "block", marginBottom: 16 }}>Monthly salary components</label>
 
           {[
@@ -190,21 +217,27 @@ export default function PAYECalculator() {
                 <label style={{ fontSize: 12, fontWeight: 600, color: "#374151" }}>{f.label}</label>
                 <InfoTooltip label="?" info={f.info} />
               </div>
+              {errors[f.key] && (
+                <p style={{ fontSize: 12, color: "#b91c1c", fontWeight: 600, margin: "0 0 4px 0" }}>{errors[f.key]}</p>
+              )}
               <div style={{ position: "relative" }}>
                 <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontWeight: 600, color: "#9ca3af", fontSize: 14 }}>Rs</span>
                 <input
                   type="number"
+                  min="0"
                   value={f.key === "basic" ? basic : f.key === "travelling" ? travelling : f.key === "telecommuting" ? telecommuting : other}
                   onChange={e => {
-                    if (f.key === "basic") setBasic(e.target.value);
-                    else if (f.key === "travelling") setTravelling(e.target.value);
-                    else if (f.key === "telecommuting") setTelecommuting(e.target.value);
-                    else setOther(e.target.value);
+                    const val = e.target.value;
+                    if (f.key === "basic") setBasic(val);
+                    else if (f.key === "travelling") setTravelling(val);
+                    else if (f.key === "telecommuting") setTelecommuting(val);
+                    else setOther(val);
+                    if (errors[f.key]) setFieldError(f.key, validatePayeField(val));
                   }}
+                  onBlur={e => setFieldError(f.key, validatePayeField(e.target.value))}
                   placeholder={f.placeholder}
-                  style={{ width: "100%", padding: "10px 14px 10px 44px", fontSize: 14, border: "1.5px solid #e5e7eb", borderRadius: 10, outline: "none", color: NAVY, boxSizing: "border-box" }}
-                  onFocus={e => (e.target.style.borderColor = CORAL)}
-                  onBlur={e => (e.target.style.borderColor = "#e5e7eb")}
+                  style={{ width: "100%", padding: "10px 14px 10px 44px", fontSize: 14, border: `1.5px solid ${errors[f.key] ? "#FCA5A5" : "#e5e7eb"}`, borderRadius: 10, outline: "none", color: NAVY, boxSizing: "border-box" }}
+                  onFocus={e => (e.target.style.borderColor = errors[f.key] ? "#FCA5A5" : CORAL)}
                 />
               </div>
             </div>
