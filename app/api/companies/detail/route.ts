@@ -125,7 +125,8 @@ export async function GET(request: Request) {
       natureOfBusiness:  parseNatureOfBusiness(text),
       officeBearers:     parseOfficeBearers(text),
     });
-  } catch {
-    return NextResponse.json({ error: 'Detail not available' });
+  } catch (err) {
+    console.error('Detail route error:', err);
+    return NextResponse.json({ error: String(err) });
   }
 }
