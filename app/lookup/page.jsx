@@ -244,7 +244,7 @@ export default function BRNLookup() {
 
             <div style={{ marginTop: 16 }}>
               <a
-                href="https://onlinesearch.mns.mu/onlinesearch/"
+                href="https://onlinesearch.mns.mu"
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 13, color: CORAL, fontWeight: 600, textDecoration: "underline" }}
