@@ -1,5 +1,6 @@
-# CLAUDE.md — OuBiznes.mu Master Instructions
+# CLAUDE.md — OuBiznes.mu Master Instructions v4
 # Read this file at the start of EVERY session before touching any code.
+# Changed from v3.1: BRN Lookup fully completed with PDF enrichment, unpdf, MNS registry link fixed
 
 ## 1. PROJECT OVERVIEW
 - **Site:** OuBiznes.mu — Free tools for Mauritian businesses
@@ -11,7 +12,7 @@
 
 ## 2. TOOLS ON THE SITE
 1. Business Structure Advisor — `app/structure/`
-2. BRN Lookup — `app/lookup/`
+2. BRN Lookup — `app/lookup/` + `app/api/companies/detail/route.ts`
 3. Business Plan Generator — `app/plan/` + `app/api/business/plan/route.ts`
 4. Grants Finder — `app/grants/`
 5. Grant Application Generator — `app/apply/`
@@ -57,7 +58,7 @@ These rules are NON-NEGOTIABLE and must be applied everywhere:
 - Green box = success confirmation
 - Disclaimers always appear BEFORE action buttons, never after
 
-### Form Validation Rules (apply to ALL forms site-wide)
+### Form Validation Rules (apply to ALL forms site-wide) ✅ IMPLEMENTED d672ecb
 - Number fields must reject non-numeric input
 - Number fields must have minimum value validation (e.g. Rs cannot be negative)
 - Required fields must show clear error if empty on submit attempt
@@ -67,6 +68,16 @@ These rules are NON-NEGOTIABLE and must be applied everywhere:
 - Text fields for names must reject numbers-only input
 - All validation triggers on blur (leaving field) AND on submit attempt
 - Never allow form submission with invalid data
+
+### Validation implementation per tool (commit d672ecb)
+| File | Fields validated |
+|---|---|
+| `app/vat/page.jsx` | `amount` (1 field) |
+| `app/paye/page.jsx` | `basic`, `travelling`, `telecommuting`, `other` (4 fields) + min wage warning |
+| `app/plan/page.jsx` | `startupCost`, `year1Revenue`, `fundingAmount`, `employees` (4 fields) |
+| `app/grants/page.jsx` | None — fully button-based |
+| `app/structure/page.jsx` | None — fully button-based |
+| `app/calendar/page.jsx` | None — read-only display |
 
 ### Step-by-step wizards
 - Progress indicator always visible at top
@@ -109,11 +120,11 @@ These rules are NON-NEGOTIABLE and must be applied everywhere:
 - `ANTHROPIC_API_KEY` — Anthropic Claude API
 - `GEMINI_API_KEY` — Google Gemini (primary for Business Plan)
 - `OPENROUTER_API_KEY` — OpenRouter (tested, unreliable free tier)
-- `SMTP_HOST` — Agent 5: outbound SMTP server (e.g. smtp.zoho.com)
-- `SMTP_PORT` — Agent 5: SMTP port (465 for SSL, 587 for TLS)
-- `SMTP_USER` — Agent 5: SMTP login / sender address
-- `SMTP_PASS` — Agent 5: SMTP password or app password
-- `REGULATORY_EMAIL_TO` — Agent 5: alert recipient (defaults to SMTP_USER if omitted)
+- `SMTP_HOST` — Agent 5 email (smtp.zoho.com)
+- `SMTP_PORT` — Agent 5 email (465)
+- `SMTP_USER` — Agent 5 email (contact@oubiznes.mu)
+- `SMTP_PASS` — Agent 5 Zoho App Password
+- `REGULATORY_EMAIL_TO` — Agent 5 alert recipient (contact@oubiznes.mu)
 
 ### AI Model Strategy
 - Business Plan Generator primary: `gemini-2.5-flash`
@@ -125,32 +136,60 @@ These rules are NON-NEGOTIABLE and must be applied everywhere:
 - `ANTHROPIC_API_KEY` must be set in Vercel dashboard
 - Never rely on .env.local for production
 
-## 7. AGENT ARCHITECTURE (TO BUILD)
+## 7. BRN LOOKUP — ARCHITECTURE (completed April 2026)
 
-### Agent 5 — Regulatory Update Agent ✓ BUILT
-- Runs weekly every Monday at 08:00 (Windows Task Scheduler)
-- Script: `scripts/regulatory-check.mjs` — run with `npm run regulatory-check`
-- Checks MRA VAT, PAYE/CSG/NSF, HRDC, and Minimum Wage source pages
-- Generates 14-item manual checklist; emails alert via Zoho SMTP if automated check fails
-- Logs to `logs/regulatory/YYYY-MM-DD.json` (git-ignored)
-- Protects platform legally
+### How it works
+1. User searches by name or BRN → POST to MNS `onlinesearch.mns.mu/onlinesearch/company`
+2. Results returned with `orgNo` per company
+3. User clicks result → GET `app/api/companies/detail?orgNo={orgNo}`
+4. Detail route fetches PDF from `printCompanyDetails?orgNo={orgNo}`
+5. PDF parsed with `unpdf` (serverless-safe, WASM-based)
+6. Returns: `registeredAddress`, `natureOfBusiness[]`, `officeBearers[]`
+7. Frontend displays 3 enriched sections: REGISTERED ADDRESS, BUSINESS ACTIVITIES, DIRECTORS & OFFICERS
 
-### Agent 1 — Onboarding Agent
+### Key technical decisions
+- Use `unpdf` NOT `pdf-parse` — pdf-parse crashes Vercel serverless at module load time
+- `unpdf` uses WASM internally, no native bindings, works on Vercel
+- `serverExternalPackages` in `next.config.js` not needed for unpdf
+- `viewCompanyDetails` endpoint requires Cloudflare Turnstile — NOT usable server-side
+- `printCompanyDetails` endpoint returns PDF — parseable via unpdf
+- "View on official registry" links to `https://onlinesearch.mns.mu` (root URL — Angular app does not support deep links)
+
+### Key commits
+- `d5e2f18` — feat(lookup): company detail enrichment
+- `72eebc4` — fix(lookup): swap pdf-parse for unpdf
+- `a215a1d` — fix(lookup): correct MNS registry link to root URL
+
+## 8. AGENT ARCHITECTURE
+
+### Agent 5 — Regulatory Update Agent ✅ BUILT (commit 2456756)
+- Script: `scripts/regulatory-check.mjs`
+- Runs: weekly every Monday at 08:00 via Windows Task Scheduler
+- Checks: 4 MRA/HRDC source pages + 14 stored regulatory values
+- Email: Zoho SMTP, contact@oubiznes.mu → contact@oubiznes.mu
+- Log: `logs/regulatory/YYYY-MM-DD.json`
+- Run manually: `npm run regulatory-check`
+- Also run manually after national budget each June
+
+### Agent 6 — QA Tester Agent (TO BUILD — priority 5)
+- Script: `scripts/qa-test.mjs`
+- Trigger: ON COMMAND — `npm run qa-test` (not scheduled)
+- Run after: any batch of tool changes, before Vercel deploy, after national budget
+- Uses: Claude in Chrome to open each tool and run all 10 testing rules from §9
+- Tests all 8 tools: vat, paye, plan, grants, structure, calendar, lookup, apply
+- Log: `logs/qa/YYYY-MM-DD-HH.json` (pass/fail per tool per rule)
+- Email: full report to contact@oubiznes.mu via Zoho SMTP
+
+### Agent 1 — Onboarding Agent (TO BUILD — priority 7)
 - Builds persistent business profile on first visit
 - All tools pre-fill from this profile
 
-### Agent 2 — Compliance Guardian
-- Monitors deadlines, sends proactive alerts
-- Pre-calculates amounts due
+### Agent 2 — Compliance Guardian (TO BUILD — priority 8)
+### Agent 3 — Grants Watchdog (TO BUILD — priority 8)
+### Agent 4 — Grant Hunter (TO BUILD — priority 8)
 
-### Agent 3 — Finance Co-pilot
-- End-to-end VAT, PAYE, payslips, invoices
-
-### Agent 4 — Grant Hunter
-- Monitors new grants, auto-matches, tracks applications
-
-## 8. TESTING RULES (for Claude in Chrome)
-When testing any tool, always check:
+## 9. TESTING RULES
+When testing any tool (use Claude in Chrome for full site audit after each batch of changes):
 1. Enter text in number fields — must be rejected
 2. Enter negative numbers — must be rejected
 3. Enter Rs 1 or Rs 0 in financial fields — must show warning
@@ -162,7 +201,11 @@ When testing any tool, always check:
 9. Test on mobile viewport (375px width)
 10. Test Download buttons produce valid non-empty files
 
-## 9. CLAUDE TOOL ROLES
+### Claude in Chrome — site-wide QA
+Run after each batch of tool changes to test all rules above across all 8 tools in one session.
+Once Agent 6 is built, replace manual Claude in Chrome runs with `npm run qa-test`.
+
+## 10. CLAUDE TOOL ROLES
 
 ### Claude (claude.ai) — Strategic Brain
 - Planning, architecture, research, decisions
@@ -175,31 +218,48 @@ When testing any tool, always check:
 - Runs terminal commands
 - Never makes design decisions without checking Section 3-4
 
-### Claude in Chrome — Tester
+### Claude in Chrome — Tester (interim — replaced by Agent 6 once built)
 - Runs through complete user flows
 - Validates all 10 testing rules above on every tool
 - Reports bugs with exact location and description
+- Run on-demand after each batch of changes
 
 ### Claude Cowork — Agent Orchestrator
 - Manages autonomous agents once built
 - Runs scheduled tasks (Regulatory Update Agent)
 
-## 10. COMMIT STANDARDS
+## 11. COMMIT STANDARDS
 Format: `[tool/area]: description of change`
 Examples:
 - `fix(paye): correct CSG employer rate to 3%/6% per MRA 2025/26`
-- `feat(plan): add sectioned output with Download for Bank button`
+- `feat(lookup): company detail enrichment — address, activities, directors from PDF`
 - `fix(forms): add numeric validation to all financial input fields`
 - `docs: update CLAUDE.md with MRA VAT threshold change`
 
 Always commit .env.local to .gitignore — never push API keys.
 
-## 11. PENDING WORK (as of 25 April 2026)
-- [ ] BRN Lookup: show business activity field, add "Is this your business?" flow
-- [ ] Compliance Calendar: full review and dynamic population
-- [ ] Grants Finder: full review, document checklist, official source links
-- [ ] Form validation: add numeric validation to ALL tool forms site-wide
-- [x] Agent 5 (Regulatory Update): built — scripts/regulatory-check.mjs
-- [ ] Agent 1 (Onboarding): build second
-- [ ] Agents 2, 3, 4: build in order
-- [ ] CLAUDE.md: keep Section 5 updated whenever MRA rules change
+## 12. PENDING WORK (as of 27 April 2026)
+- [x] Agent 5 — Regulatory Update Agent (commit 2456756)
+- [x] Form validation — numeric validation across all tool forms (commit d672ecb)
+- [x] BRN Lookup — company detail enrichment, unpdf, registry link (commits d5e2f18→a215a1d)
+- [ ] Compliance Calendar — full review and dynamic population (~2–3 hours)
+- [ ] Grants Finder — full review, document checklist, official source links (~2 hours)
+- [ ] Claude in Chrome — full site QA after Calendar + Grants fixes (~1 hour)
+- [ ] Agent 6 — QA Tester (`npm run qa-test`, on-command) (~2–3 hours)
+- [ ] Feedback + voting mechanism — `/feedback` page (~3–4 hours)
+- [ ] Agent 1 — Onboarding Agent (~4–5 hours)
+- [ ] Agents 2, 3, 4 — build in order (~3–4 hours each)
+- [ ] CLAUDE.md — keep Section 5 updated whenever MRA rules change
+
+## 13. PRIORITY ORDER (as of 27 April 2026)
+| Priority | Item | Estimate |
+|---|---|---|
+| 1 | Compliance Calendar review | 2–3 hours |
+| 2 | Grants Finder review + doc checklist | 2 hours |
+| 3 | Claude in Chrome — full site QA (manual) | 1 hour |
+| 4 | Agent 6 — QA Tester (automated) | 2–3 hours |
+| 5 | Feedback + voting mechanism | 3–4 hours |
+| 6 | Agent 1 — Onboarding Agent | 4–5 hours |
+| 7 | Agents 2, 3, 4 | 3–4 hours each |
+
+Total remaining to solid v1: ~20–25 hours across 8–12 sessions.
