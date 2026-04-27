@@ -13,7 +13,9 @@ export default function BRNLookup() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState(null);
   const [selected, setSelected] = useState(null);
-  const [detail, setDetail] = useState(null);
+  const [enriched, setEnriched] = useState(null);
+  const [enrichedLoading, setEnrichedLoading] = useState(false);
+  const [enrichedError, setEnrichedError] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -24,7 +26,8 @@ export default function BRNLookup() {
     setError("");
     setResults(null);
     setSelected(null);
-    setDetail(null);
+    setEnriched(null);
+    setEnrichedError(false);
     try {
       const res = await fetch(`/api/companies/search?q=${encodeURIComponent(query.trim())}`);
       const data = await res.json();
@@ -42,14 +45,31 @@ export default function BRNLookup() {
 
   async function handleSelect(company) {
     setSelected(company);
-    setDetail(company); // Use search result data directly — no second API call needed
+    setEnriched(null);
+    setEnrichedError(false);
+    if (!company.orgNo) return;
+    setEnrichedLoading(true);
+    try {
+      const res = await fetch(`/api/companies/detail?orgNo=${encodeURIComponent(company.orgNo)}`);
+      const data = await res.json();
+      if (data.error) {
+        setEnrichedError(true);
+      } else {
+        setEnriched(data);
+      }
+    } catch {
+      setEnrichedError(true);
+    } finally {
+      setEnrichedLoading(false);
+    }
   }
 
   function reset() {
     setQuery("");
     setResults(null);
     setSelected(null);
-    setDetail(null);
+    setEnriched(null);
+    setEnrichedError(false);
     setError("");
   }
 
@@ -128,7 +148,7 @@ export default function BRNLookup() {
           <div style={{ background: "#fff", border: `2px solid ${CORAL}`, borderRadius: 16, padding: 24, marginBottom: 20 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
               <h2 style={{ fontSize: 20, fontWeight: 800, color: NAVY, margin: 0 }}>{selected.name}</h2>
-              <button onClick={() => { setSelected(null); setDetail(null); }} style={{ fontSize: 13, color: "#6b7280", background: "none", border: "none", cursor: "pointer", marginLeft: 12, whiteSpace: "nowrap" }}>
+              <button onClick={() => { setSelected(null); setEnriched(null); setEnrichedError(false); }} style={{ fontSize: 13, color: "#6b7280", background: "none", border: "none", cursor: "pointer", marginLeft: 12, whiteSpace: "nowrap" }}>
                 ← Back to results
               </button>
             </div>
@@ -150,30 +170,76 @@ export default function BRNLookup() {
               ))}
             </div>
 
-            {/* Enriched detail — from search result (no second API call) */}
-            {detail && (
-              <>
-                {/* Extra company fields from search result */}
-                {(() => {
-                  const extras = [
-                    { label: "Type", value: detail.typeOfCompany },
-                  ].filter(r => r.value);
-                  return extras.length > 0 ? (
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 4 }}>
-                      {extras.map(row => (
-                        <div key={row.label} style={{ padding: "10px 0", borderBottom: "1px solid #f3f4f6", gridColumn: row.label === "Registered Office Address" ? "1 / -1" : "auto" }}>
-                          <div style={{ fontSize: 12, color: "#9ca3af", fontWeight: 600, marginBottom: 2 }}>{row.label}</div>
-                          <div style={{ fontSize: 14, fontWeight: 600, color: NAVY }}>{row.value}</div>
+            {/* Enriched detail — from PDF detail API */}
+            {enrichedLoading && (
+              <div style={{ marginTop: 20, textAlign: "center", color: "#9ca3af", fontSize: 13, padding: "12px 0" }}>
+                Loading full details…
+              </div>
+            )}
+
+            {enrichedError && (
+              <div style={{ marginTop: 16, fontSize: 13, color: "#9ca3af" }}>
+                Full details available on the{" "}
+                <a href={`https://onlinesearch.mns.mu/?q=${encodeURIComponent(selected.name)}`} target="_blank" rel="noopener noreferrer" style={{ color: CORAL, textDecoration: "underline" }}>
+                  official registry
+                </a>.
+              </div>
+            )}
+
+            {enriched && !enrichedLoading && (
+              <div style={{ marginTop: 20 }}>
+                {/* Registered Address */}
+                {enriched.registeredAddress && (
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ background: "#1a2332", color: "#fff", fontWeight: 700, fontSize: 12, padding: "6px 12px", borderRadius: "6px 6px 0 0", letterSpacing: "0.05em" }}>
+                      REGISTERED ADDRESS
+                    </div>
+                    <div style={{ background: "#f9fafb", border: "1px solid #e5e7eb", borderTop: "none", borderRadius: "0 0 6px 6px", padding: "10px 12px", fontSize: 14, color: NAVY, fontWeight: 500 }}>
+                      {enriched.registeredAddress}
+                    </div>
+                  </div>
+                )}
+
+                {/* Business Activities */}
+                {enriched.natureOfBusiness && enriched.natureOfBusiness.length > 0 && (
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ background: "#1a2332", color: "#fff", fontWeight: 700, fontSize: 12, padding: "6px 12px", borderRadius: "6px 6px 0 0", letterSpacing: "0.05em" }}>
+                      BUSINESS ACTIVITIES
+                    </div>
+                    <div style={{ background: "#f9fafb", border: "1px solid #e5e7eb", borderTop: "none", borderRadius: "0 0 6px 6px", padding: "10px 12px" }}>
+                      {enriched.natureOfBusiness.map((act, i) => (
+                        <div key={i} style={{ fontSize: 14, color: NAVY, fontWeight: 500, padding: "3px 0", borderBottom: i < enriched.natureOfBusiness.length - 1 ? "1px solid #f3f4f6" : "none" }}>
+                          {act}
                         </div>
                       ))}
                     </div>
-                  ) : null;
-                })()}
+                  </div>
+                )}
 
-                {/* Note: Business Details and Stated Capital require a separate detail API.
-                    MNS search result doesn't include these — only the popup view does.
-                    To fully enrich detail, we'd need to HTML-scrape the MNS detail page. */}
-              </>
+                {/* Office Bearers */}
+                {enriched.officeBearers && enriched.officeBearers.length > 0 && (
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ background: "#1a2332", color: "#fff", fontWeight: 700, fontSize: 12, padding: "6px 12px", borderRadius: "6px 6px 0 0", letterSpacing: "0.05em" }}>
+                      DIRECTORS &amp; OFFICERS
+                    </div>
+                    <div style={{ background: "#f9fafb", border: "1px solid #e5e7eb", borderTop: "none", borderRadius: "0 0 6px 6px", padding: "4px 12px" }}>
+                      {enriched.officeBearers.map((b, i) => (
+                        <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: i < enriched.officeBearers.length - 1 ? "1px solid #f3f4f6" : "none" }}>
+                          <div>
+                            <span style={{ fontSize: 14, fontWeight: 600, color: NAVY }}>{b.name}</span>
+                            <span style={{ marginLeft: 8, fontSize: 12, background: "#e0f2f1", color: "#0D9488", fontWeight: 600, padding: "2px 8px", borderRadius: 20 }}>
+                              {b.position}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: 12, color: "#9ca3af", whiteSpace: "nowrap", marginLeft: 8 }}>
+                            {b.appointedDate}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
 
             <div style={{ marginTop: 16 }}>
