@@ -14,10 +14,10 @@
     "lucide-react": "^0.379.0",
     "next": "^16.2.4",
     "nodemailer": "^8.0.6",
-    "pdf-parse": "^2.4.5",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-markdown": "^10.1.0"
+    "react-markdown": "^10.1.0",
+    "unpdf": "^1.6.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.59.1",
