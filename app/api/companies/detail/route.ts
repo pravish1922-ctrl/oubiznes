@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { PDFParse } from 'pdf-parse';
+import pdfParse from 'pdf-parse';
 
 // ── PARSERS ───────────────────────────────────────────────────────────────────
 
@@ -116,15 +116,13 @@ export async function GET(request: Request) {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
     const buffer = Buffer.from(await res.arrayBuffer());
-    const parser = new PDFParse({ data: buffer });
-    await parser.load();
-    // getText() returns a TextResult object; .text is the full concatenated string
-    const result = await parser.getText() as unknown as { text: string };
+    const data = await pdfParse(buffer);
+    const text = data.text;
 
     return NextResponse.json({
-      registeredAddress: parseRegisteredAddress(result.text),
-      natureOfBusiness:  parseNatureOfBusiness(result.text),
-      officeBearers:     parseOfficeBearers(result.text),
+      registeredAddress: parseRegisteredAddress(text),
+      natureOfBusiness:  parseNatureOfBusiness(text),
+      officeBearers:     parseOfficeBearers(text),
     });
   } catch {
     return NextResponse.json({ error: 'Detail not available' });
