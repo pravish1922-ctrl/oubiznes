@@ -1,6 +1,15 @@
-# CLAUDE.md — OuBiznes.mu Master Instructions v5
+# CLAUDE.md — OuBiznes.mu Master Instructions v6
 # Read this file at the start of EVERY session before touching any code.
-# Changed from v4: SPAK autonomous operator built — Supabase schema, morning briefing, WhatsApp+email notifications
+#
+# Changelog
+# v6 (May 2026): Supabase live + all tables applied, SPAK morning briefing agent live,
+#   Vercel Cron configured (0 3 * * * → /api/spak/briefing), home page redesigned to
+#   2×2 grid, Coming Next voting section added (Supabase-backed), SPAK footer bar added,
+#   Twilio WhatsApp wired and verified, CRON_SECRET protection added.
+# v5 (May 2026): SPAK autonomous operator scaffolded — Supabase schema, morning briefing
+#   script, WhatsApp+email via lib/notify.mjs, API routes for subscribe/votes/status.
+# v4 (Apr 2026): BRN Lookup fully completed — PDF enrichment via unpdf, MNS registry link.
+# v3.1 (Apr 2026): Compliance Calendar fixes, form validation across all tools.
 
 ## 1. PROJECT OVERVIEW
 - **Site:** OuBiznes.mu — Free tools for Mauritian businesses
@@ -172,25 +181,34 @@ These rules are NON-NEGOTIABLE and must be applied everywhere:
 - `72eebc4` — fix(lookup): swap pdf-parse for unpdf
 - `a215a1d` — fix(lookup): correct MNS registry link to root URL
 
-## 8. SPAK — AUTONOMOUS OPERATOR (built May 2026)
+## 8. SPAK — AUTONOMOUS OPERATOR (live May 2026)
 
 SPAK is the autonomous infrastructure layer. One Supabase database serves all projects.
 
-### Supabase Schema (apply via Dashboard → SQL Editor)
-File: `supabase/schema.sql`
-Tables: `projects`, `email_subscribers`, `feature_votes`, `agent_runs`, `spak_status`, `morning_briefings`
+### Supabase — LIVE
+- **Project URL:** `https://[your-project-id].supabase.co` ← fill in from Vercel env / Supabase dashboard
+- **Schema file:** `supabase/schema.sql` (already applied — do NOT re-run unless resetting)
+- **Dashboard:** supabase.com → oubiznes project → Table Editor
 
-### Supabase Setup (one-time)
-1. Create project at supabase.com (free tier)
-2. Dashboard → SQL Editor → paste `supabase/schema.sql` → Run
-3. Settings → API → copy URL + anon key + service_role key
-4. Add all 3 to `.env.local` AND Vercel dashboard
+### Supabase Tables
+| Table | Purpose | Key columns |
+|---|---|---|
+| `projects` | Registry of projects sharing this DB | `id` (e.g. `'oubiznes'`), `name`, `url` |
+| `email_subscribers` | Email signups from home page strip | `project`, `email`, `source`, `confirmed`, `created_at` |
+| `feature_votes` | Coming Next votes, one row per vote | `project`, `feature_id`, `fingerprint` (dedup), `created_at` |
+| `agent_runs` | Log of every agent execution | `project`, `agent_name`, `run_at`, `status`, `summary`, `details` (jsonb), `flags_count` |
+| `spak_status` | Latest health check written by briefing agent | `project`, `checked_at`, `all_tools_up`, `tools_up`, `tools_total`, `status_line`, `details` |
+| `morning_briefings` | Daily briefing archive, one row per date | `project`, `briefing_date`, `content_text`, `stats` (jsonb), `sent_whatsapp`, `sent_email` |
 
-### Twilio WhatsApp Setup (one-time)
-1. Create account at twilio.com
-2. Activate WhatsApp sandbox in console (Messaging → Try it out → WhatsApp)
-3. Send the join code from Pravish's phone to +1 415 523 8886
-4. Add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_FROM, OPERATOR_WHATSAPP to .env.local
+### RLS Policies
+- `email_subscribers`, `feature_votes`: anon INSERT allowed (no login required), service_role full access
+- `spak_status`: anon SELECT allowed (home page footer reads it), service_role full access
+- `agent_runs`, `morning_briefings`: service_role only
+
+### Twilio WhatsApp — LIVE
+1. Sandbox active at console.twilio.com
+2. From phone: join code sent to +1 415 523 8886 ✓
+3. TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_FROM, OPERATOR_WHATSAPP set in Vercel + .env.local
 
 ### SPAK Files
 | File | Purpose |
@@ -311,29 +329,38 @@ Examples:
 Always commit .env.local to .gitignore — never push API keys.
 
 ## 13. PENDING WORK (as of 1 May 2026)
+
+### Done ✅
 - [x] Agent 5 — Regulatory Update Agent (commit 2456756)
 - [x] Form validation — numeric validation across all tool forms (commit d672ecb)
 - [x] BRN Lookup — company detail enrichment, unpdf, registry link (commits d5e2f18→a215a1d)
 - [x] Compliance Calendar — month offsets, HRDC, filters, ICS, disclaimer (commit 11d310f)
-- [x] Home page — 2×2 grid redesign, voting, email strip, SPAK footer (commit 2e5cc6a)
-- [x] SPAK — Supabase schema, morning briefing, WhatsApp+email, API routes (this session)
-- [ ] SPAK activation — add SUPABASE_URL/KEYS + TWILIO vars to .env.local + Vercel
-- [ ] Task Scheduler — add `npm run spak-briefing` daily at 07:00 (same as regulatory-check)
+- [x] Home page — 2×2 grid redesign, Coming Next voting, email strip, SPAK footer (commit 2e5cc6a)
+- [x] SPAK — Supabase schema, morning briefing script, WhatsApp+email, API routes (446abfc)
+- [x] Vercel Cron — /api/spak/briefing at 0 3 * * *, CRON_SECRET protection (4ef90e4)
+- [x] Supabase live — all 6 tables applied, env vars set in Vercel + .env.local
+- [x] SPAK briefing agent live — email confirmed working, WhatsApp wired via Twilio sandbox
+- [x] Twilio WhatsApp — sandbox active, join code sent, env vars in Vercel
+- [x] Home page voting — backed by Supabase feature_votes table, fingerprint dedup
+- [x] Email subscribe strip — backed by Supabase email_subscribers, Formspree removed
+
+### Next up 🔜
+- [ ] Task Scheduler — add `npm run spak-briefing` daily at 07:00 on Windows (~10 min)
 - [ ] Grants Finder — full review, document checklist, official source links (~2 hours)
-- [ ] Claude in Chrome — full site QA (~1 hour)
-- [ ] Agent 6 — QA Tester (`npm run qa-test`, on-command) (~2–3 hours)
-- [ ] Agent 1 — Onboarding Agent — business profile, pre-fill tools (~4–5 hours)
+- [ ] Claude in Chrome — full site QA across all 8 tools (~1 hour)
+- [ ] Agent 6 — QA Tester (`npm run qa-test`, on-command, ~2–3 hours)
+- [ ] Agent 1 — Onboarding Agent — persistent business profile, pre-fill all tools (~4–5 hours)
 - [ ] Agents 2, 3, 4 — Compliance Guardian, Grants Watchdog, Grant Hunter (~3–4 hours each)
-- [ ] CLAUDE.md — keep Section 5 updated whenever MRA rules change
+- [ ] CLAUDE.md §5 — update whenever MRA rules change (budget June 2026)
 
 ## 14. PRIORITY ORDER (as of 1 May 2026)
 | Priority | Item | Estimate |
 |---|---|---|
-| 1 | SPAK activation (add env vars, set Task Scheduler) | 30 min |
-| 2 | Grants Finder review + doc checklist | 2 hours |
+| 1 | Task Scheduler — spak-briefing daily | 10 min |
+| 2 | Grants Finder — full review + doc checklist | 2 hours |
 | 3 | Claude in Chrome — full site QA | 1 hour |
-| 4 | Agent 6 — QA Tester (automated) | 2–3 hours |
+| 4 | Agent 6 — QA Tester automated | 2–3 hours |
 | 5 | Agent 1 — Onboarding Agent | 4–5 hours |
-| 6 | Agents 2, 3, 4 | 3–4 hours each |
+| 6 | Agents 2, 3, 4 — in order | 3–4 hours each |
 
-Total remaining to solid v1: ~15–18 hours across 6–8 sessions.
+Total remaining to solid v1: ~12–15 hours across 5–7 sessions.
