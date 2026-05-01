@@ -1,6 +1,6 @@
-# CLAUDE.md — OuBiznes.mu Master Instructions v4
+# CLAUDE.md — OuBiznes.mu Master Instructions v5
 # Read this file at the start of EVERY session before touching any code.
-# Changed from v3.1: BRN Lookup fully completed with PDF enrichment, unpdf, MNS registry link fixed
+# Changed from v4: SPAK autonomous operator built — Supabase schema, morning briefing, WhatsApp+email notifications
 
 ## 1. PROJECT OVERVIEW
 - **Site:** OuBiznes.mu — Free tools for Mauritian businesses
@@ -120,11 +120,18 @@ These rules are NON-NEGOTIABLE and must be applied everywhere:
 - `ANTHROPIC_API_KEY` — Anthropic Claude API
 - `GEMINI_API_KEY` — Google Gemini (primary for Business Plan)
 - `OPENROUTER_API_KEY` — OpenRouter (tested, unreliable free tier)
-- `SMTP_HOST` — Agent 5 email (smtp.zoho.com)
-- `SMTP_PORT` — Agent 5 email (465)
-- `SMTP_USER` — Agent 5 email (contact@oubiznes.mu)
-- `SMTP_PASS` — Agent 5 Zoho App Password
-- `REGULATORY_EMAIL_TO` — Agent 5 alert recipient (contact@oubiznes.mu)
+- `SMTP_HOST` — Zoho SMTP (smtp.zoho.com)
+- `SMTP_PORT` — Zoho SMTP (465)
+- `SMTP_USER` — Zoho SMTP (contact@oubiznes.mu)
+- `SMTP_PASS` — Zoho App Password
+- `REGULATORY_EMAIL_TO` — alert recipient (contact@oubiznes.mu)
+- `SUPABASE_URL` — from supabase.com dashboard (Settings → API)
+- `SUPABASE_ANON_KEY` — public anon key (safe to expose to browser via API routes)
+- `SUPABASE_SERVICE_ROLE_KEY` — secret, server-side only (scripts + API routes)
+- `TWILIO_ACCOUNT_SID` — from console.twilio.com
+- `TWILIO_AUTH_TOKEN` — from console.twilio.com
+- `TWILIO_WHATSAPP_FROM` — sandbox: whatsapp:+14155238886
+- `OPERATOR_WHATSAPP` — your WhatsApp number: whatsapp:+2305XXXXXXX
 
 ### AI Model Strategy
 - Business Plan Generator primary: `gemini-2.5-flash`
@@ -160,7 +167,65 @@ These rules are NON-NEGOTIABLE and must be applied everywhere:
 - `72eebc4` — fix(lookup): swap pdf-parse for unpdf
 - `a215a1d` — fix(lookup): correct MNS registry link to root URL
 
-## 8. AGENT ARCHITECTURE
+## 8. SPAK — AUTONOMOUS OPERATOR (built May 2026)
+
+SPAK is the autonomous infrastructure layer. One Supabase database serves all projects.
+
+### Supabase Schema (apply via Dashboard → SQL Editor)
+File: `supabase/schema.sql`
+Tables: `projects`, `email_subscribers`, `feature_votes`, `agent_runs`, `spak_status`, `morning_briefings`
+
+### Supabase Setup (one-time)
+1. Create project at supabase.com (free tier)
+2. Dashboard → SQL Editor → paste `supabase/schema.sql` → Run
+3. Settings → API → copy URL + anon key + service_role key
+4. Add all 3 to `.env.local` AND Vercel dashboard
+
+### Twilio WhatsApp Setup (one-time)
+1. Create account at twilio.com
+2. Activate WhatsApp sandbox in console (Messaging → Try it out → WhatsApp)
+3. Send the join code from Pravish's phone to +1 415 523 8886
+4. Add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_FROM, OPERATOR_WHATSAPP to .env.local
+
+### SPAK Files
+| File | Purpose |
+|---|---|
+| `supabase/schema.sql` | Full DB schema — apply once in Supabase |
+| `lib/supabase.mjs` | Shared Supabase client (service role, scripts only) |
+| `lib/notify.mjs` | sendEmail() + sendWhatsApp() + notify() |
+| `scripts/spak-briefing.mjs` | Morning briefing agent |
+| `app/api/subscribe/route.ts` | POST — saves email to Supabase |
+| `app/api/votes/route.ts` | GET counts / POST vote (fingerprint dedup) |
+| `app/api/spak/status/route.ts` | GET latest status line for footer |
+
+### Morning Briefing — npm run spak-briefing
+- Checks site health (4 endpoints)
+- Fetches subscriber count, new subscribers 24h, vote tallies
+- Gets last regulatory check status from agent_runs
+- Calculates next compliance deadline
+- Sends WhatsApp message + email
+- Writes to morning_briefings + spak_status in Supabase
+
+### Windows Task Scheduler — Daily 07:00 MU time
+```
+Action: cmd /c "cd /d C:\Users\conta\OneDrive\Documents\oubiznes && npm run spak-briefing"
+Trigger: Daily at 07:00
+```
+
+### Morning Briefing Format (WhatsApp)
+```
+*SPAK Morning Brief — Thu 1 May*
+
+📧 Subscribers: 47 (+3 new)
+🗳️  Top vote: Website Builder (12 votes)
+🟢 Site health: All 4 checks passed
+📋 Regulatory: ✓ success (28 Apr)
+⏰ Next deadline: PAYE/CSG due in 30 days (31 May)
+
+_OuBiznes.mu — Powered by SPAK_
+```
+
+## 9. AGENT ARCHITECTURE
 
 ### Agent 5 — Regulatory Update Agent ✅ BUILT (commit 2456756)
 - Script: `scripts/regulatory-check.mjs`
@@ -188,7 +253,7 @@ These rules are NON-NEGOTIABLE and must be applied everywhere:
 ### Agent 3 — Grants Watchdog (TO BUILD — priority 8)
 ### Agent 4 — Grant Hunter (TO BUILD — priority 8)
 
-## 9. TESTING RULES
+## 10. TESTING RULES
 When testing any tool (use Claude in Chrome for full site audit after each batch of changes):
 1. Enter text in number fields — must be rejected
 2. Enter negative numbers — must be rejected
@@ -205,7 +270,7 @@ When testing any tool (use Claude in Chrome for full site audit after each batch
 Run after each batch of tool changes to test all rules above across all 8 tools in one session.
 Once Agent 6 is built, replace manual Claude in Chrome runs with `npm run qa-test`.
 
-## 10. CLAUDE TOOL ROLES
+## 11. CLAUDE TOOL ROLES
 
 ### Claude (claude.ai) — Strategic Brain
 - Planning, architecture, research, decisions
@@ -228,7 +293,7 @@ Once Agent 6 is built, replace manual Claude in Chrome runs with `npm run qa-tes
 - Manages autonomous agents once built
 - Runs scheduled tasks (Regulatory Update Agent)
 
-## 11. COMMIT STANDARDS
+## 12. COMMIT STANDARDS
 Format: `[tool/area]: description of change`
 Examples:
 - `fix(paye): correct CSG employer rate to 3%/6% per MRA 2025/26`
@@ -238,28 +303,30 @@ Examples:
 
 Always commit .env.local to .gitignore — never push API keys.
 
-## 12. PENDING WORK (as of 27 April 2026)
+## 13. PENDING WORK (as of 1 May 2026)
 - [x] Agent 5 — Regulatory Update Agent (commit 2456756)
 - [x] Form validation — numeric validation across all tool forms (commit d672ecb)
 - [x] BRN Lookup — company detail enrichment, unpdf, registry link (commits d5e2f18→a215a1d)
-- [ ] Compliance Calendar — full review and dynamic population (~2–3 hours)
+- [x] Compliance Calendar — month offsets, HRDC, filters, ICS, disclaimer (commit 11d310f)
+- [x] Home page — 2×2 grid redesign, voting, email strip, SPAK footer (commit 2e5cc6a)
+- [x] SPAK — Supabase schema, morning briefing, WhatsApp+email, API routes (this session)
+- [ ] SPAK activation — add SUPABASE_URL/KEYS + TWILIO vars to .env.local + Vercel
+- [ ] Task Scheduler — add `npm run spak-briefing` daily at 07:00 (same as regulatory-check)
 - [ ] Grants Finder — full review, document checklist, official source links (~2 hours)
-- [ ] Claude in Chrome — full site QA after Calendar + Grants fixes (~1 hour)
+- [ ] Claude in Chrome — full site QA (~1 hour)
 - [ ] Agent 6 — QA Tester (`npm run qa-test`, on-command) (~2–3 hours)
-- [ ] Feedback + voting mechanism — `/feedback` page (~3–4 hours)
-- [ ] Agent 1 — Onboarding Agent (~4–5 hours)
-- [ ] Agents 2, 3, 4 — build in order (~3–4 hours each)
+- [ ] Agent 1 — Onboarding Agent — business profile, pre-fill tools (~4–5 hours)
+- [ ] Agents 2, 3, 4 — Compliance Guardian, Grants Watchdog, Grant Hunter (~3–4 hours each)
 - [ ] CLAUDE.md — keep Section 5 updated whenever MRA rules change
 
-## 13. PRIORITY ORDER (as of 27 April 2026)
+## 14. PRIORITY ORDER (as of 1 May 2026)
 | Priority | Item | Estimate |
 |---|---|---|
-| 1 | Compliance Calendar review | 2–3 hours |
+| 1 | SPAK activation (add env vars, set Task Scheduler) | 30 min |
 | 2 | Grants Finder review + doc checklist | 2 hours |
-| 3 | Claude in Chrome — full site QA (manual) | 1 hour |
+| 3 | Claude in Chrome — full site QA | 1 hour |
 | 4 | Agent 6 — QA Tester (automated) | 2–3 hours |
-| 5 | Feedback + voting mechanism | 3–4 hours |
-| 6 | Agent 1 — Onboarding Agent | 4–5 hours |
-| 7 | Agents 2, 3, 4 | 3–4 hours each |
+| 5 | Agent 1 — Onboarding Agent | 4–5 hours |
+| 6 | Agents 2, 3, 4 | 3–4 hours each |
 
-Total remaining to solid v1: ~20–25 hours across 8–12 sessions.
+Total remaining to solid v1: ~15–18 hours across 6–8 sessions.
