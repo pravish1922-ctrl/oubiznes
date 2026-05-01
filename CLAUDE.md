@@ -186,7 +186,7 @@ These rules are NON-NEGOTIABLE and must be applied everywhere:
 SPAK is the autonomous infrastructure layer. One Supabase database serves all projects.
 
 ### Supabase — LIVE
-- **Project URL:** `https://[your-project-id].supabase.co` ← fill in from Vercel env / Supabase dashboard
+- **Project URL:** `https://ftpqluqkihmvnfxxtixc.supabase.co`
 - **Schema file:** `supabase/schema.sql` (already applied — do NOT re-run unless resetting)
 - **Dashboard:** supabase.com → oubiznes project → Table Editor
 
