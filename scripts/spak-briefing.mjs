@@ -275,12 +275,6 @@ async function run() {
   console.log('\n✓ Morning briefing complete\n');
 }
 
-function formatDate(iso) {
-  return new Date(iso).toLocaleDateString('en-MU', {
-    day: 'numeric', month: 'short', timeZone: 'Indian/Mauritius',
-  });
-}
-
 run().catch(err => {
   console.error('Fatal:', err);
   process.exit(1);
