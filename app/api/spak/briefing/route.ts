@@ -24,7 +24,7 @@ const SITE_URL = 'https://oubiznes.mu';
 
 const HEALTH_ENDPOINTS = [
   '/',
-  '/api/companies/detail?orgNo=test',
+  '/api/companies/detail',              // 400 = missing param, route alive, no MNS call
   '/vat',
   '/calendar',
 ];

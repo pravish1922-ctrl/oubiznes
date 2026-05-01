@@ -28,7 +28,7 @@ const SITE_URL = 'https://oubiznes.mu';
 // Health-check endpoints — must return 200
 const HEALTH_ENDPOINTS = [
   '/',
-  '/api/companies/detail?orgNo=test',   // returns 400, not 500 = route alive
+  '/api/companies/detail',              // returns 400 (missing param) = route alive, no MNS call
   '/vat',
   '/calendar',
 ];
