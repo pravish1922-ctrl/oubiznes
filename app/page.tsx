@@ -2,226 +2,238 @@
 import Link from "next/link";
 import { useState } from "react";
 
-const NAVY = "#0A1628";
-const CORAL = "#0D9488";
-const GOLD = "#F4C430";
-const GREEN = "#0F7B3F";
-const BLUE = "#1E5AA0";
+const NAVY    = "#0A1628";
+const CORAL   = "#0D9488";
+const GOLD    = "#F4C430";
+const GREEN   = "#0F7B3F";
+const BLUE    = "#1E5AA0";
+const PRIMARY = "#0F6E56";
+const CREAM   = "#F5F0E8";
+const DIVIDER = "#d0c9be";
 
-const tools = [
-  {
-    group: "Starting a Business",
-    items: [
-      {
-        href: "/structure",
-        emoji: "🏗️",
-        title: "Business Structure Advisor",
-        desc: "Sole trader, partnership, or Ltd? 5 questions, clear answer.",
-        tag: "New",
-        tagColor: GREEN,
-        live: true,
-      },
-      {
-        href: "/lookup",
-        emoji: "🔍",
-        title: "BRN Lookup",
-        desc: "Search any Mauritian registered company. Powered by the official Mauritius company registry",
-        tag: "New",
-        tagColor: GREEN,
-        live: true,
-      },
-      {
-        href: "/plan",
-        emoji: "📋",
-        title: "Business Plan Generator",
-        desc: "Professional business plan in 10 minutes — AI-drafted, Mauritius-focused.",
-        tag: "New",
-        tagColor: GREEN,
-        live: true,
-      },
-    ],
-  },
-  {
-    group: "Funding & Growth",
-    items: [
-      {
-        href: "/grants",
-        emoji: "💰",
-        title: "Grants Finder",
-        desc: "Find every SME grant you qualify for — TINNS, ICDS, and 18 more.",
-        live: true,
-      },
-      {
-        href: "/apply",
-        emoji: "📝",
-        title: "Grant Application Generator",
-        desc: "AI-drafted first version of your grant application in minutes.",
-        live: true,
-      },
-    ],
-  },
-  {
-    group: "Compliance & Operations",
-    items: [
-      {
-        href: "/calendar",
-        emoji: "📅",
-        title: "Compliance Calendar",
-        desc: "Every MRA deadline for 2026, downloadable to your calendar.",
-        live: true,
-      },
-      {
-        href: "/vat",
-        emoji: "🧮",
-        title: "VAT Calculator",
-        desc: "Calculate VAT instantly — standard, zero-rated, and exempt.",
-        live: true,
-      },
-      {
-        href: "/paye",
-        emoji: "👥",
-        title: "PAYE Calculator",
-        desc: "Net pay, employer contributions, CSG and NSF in one click.",
-        live: true,
-      },
-    ],
-  },
+interface Tool { href: string; emoji: string; title: string; desc: string }
+interface VoteItem { id: string; title: string; desc: string; hot?: boolean }
+
+const STARTING: Tool[] = [
+  { href: "/structure", emoji: "🏗️", title: "Business Structure Advisor", desc: "Sole trader, partnership, or Ltd? 5 questions, clear answer." },
+  { href: "/lookup",    emoji: "🔍", title: "BRN Lookup",                  desc: "Search any Mauritian registered company. Official registry." },
+  { href: "/plan",      emoji: "📋", title: "Business Plan Generator",      desc: "Professional plan in 10 minutes — AI-drafted, Mauritius-focused." },
 ];
 
+const FUNDING: Tool[] = [
+  { href: "/grants", emoji: "💰", title: "Grants Finder",               desc: "Find every SME grant you qualify for — TINNS, ICDS and more." },
+  { href: "/apply",  emoji: "📝", title: "Grant Application Generator", desc: "AI-drafted first version of your grant application in minutes." },
+];
+
+const COMPLIANCE: Tool[] = [
+  { href: "/calendar", emoji: "📅", title: "Compliance Calendar", desc: "Every MRA deadline for 2026, downloadable to your calendar." },
+  { href: "/vat",      emoji: "🧮", title: "VAT Calculator",      desc: "Calculate VAT instantly — standard, zero-rated, and exempt." },
+  { href: "/paye",     emoji: "👥", title: "PAYE Calculator",     desc: "Net pay, employer contributions, CSG and NSF in one click." },
+];
+
+// TODO: wire to Supabase feature_votes table
+const COMING_NEXT: VoteItem[] = [
+  { id: "tiktok",      title: "AI TikTok Creator",  desc: "Auto-generate product videos for your business", hot: true },
+  { id: "website",     title: "Website Builder",     desc: "Launch a business site in minutes" },
+  { id: "marketplace", title: "Marketplace",         desc: "List and sell your products locally" },
+  { id: "ai-learning", title: "AI Learning Space",   desc: "Upskill your team with AI-powered training" },
+];
+
+const SECTION_HEADER: React.CSSProperties = {
+  fontSize: 9, fontWeight: 700, letterSpacing: "0.12em", color: "#999",
+  textTransform: "uppercase", paddingBottom: 8,
+  borderBottom: "1px solid #e0d9ce", marginBottom: 8,
+};
+
+function ToolRow({ tool, hovered, onEnter, onLeave }: {
+  tool: Tool;
+  hovered: boolean;
+  onEnter: () => void;
+  onLeave: () => void;
+}) {
+  return (
+    <Link href={tool.href} style={{ textDecoration: "none", display: "block", marginBottom: 6 }}>
+      <div
+        onMouseEnter={onEnter}
+        onMouseLeave={onLeave}
+        style={{
+          background: "#fff",
+          border: `1px solid ${hovered ? PRIMARY : "#e8e3da"}`,
+          borderRadius: 8,
+          padding: "10px 14px",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          cursor: "pointer",
+          transition: "border-color 0.15s",
+        }}
+      >
+        <span style={{ fontSize: 18, flexShrink: 0 }}>{tool.emoji}</span>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontWeight: 600, fontSize: 13, color: NAVY }}>{tool.title}</div>
+          <div style={{ fontSize: 11, color: "#6b7280", marginTop: 1 }}>{tool.desc}</div>
+        </div>
+        <span style={{ color: "#d1d5db", fontSize: 14, flexShrink: 0 }}>→</span>
+      </div>
+    </Link>
+  );
+}
+
 export default function Home() {
-  const [hoveredHref, setHoveredHref] = useState(null);
+  const [hovered, setHovered] = useState<string | null>(null);
+  // TODO: wire to Supabase feature_votes table
+  const [votes, setVotes] = useState<Record<string, number>>(
+    Object.fromEntries(COMING_NEXT.map(c => [c.id, 0]))
+  );
+
+  function vote(id: string) {
+    setVotes(v => ({ ...v, [id]: v[id] + 1 }));
+  }
+
+  const quadrant: React.CSSProperties = { background: CREAM, padding: "16px 28px", overflow: "auto" };
 
   return (
-    <div style={{ background: "linear-gradient(to bottom, #FAF5EE, #fff)", colorScheme: "light", minHeight: "100vh" }}>
-      {/* Flag bar */}
-      <div style={{ height: 8, display: "flex" }}>
-        <div style={{ flex: 1, background: "#CC0000" }} />
-        <div style={{ flex: 1, background: BLUE }} />
-        <div style={{ flex: 1, background: GOLD }} />
-        <div style={{ flex: 1, background: GREEN }} />
-      </div>
+    <>
+      <style>{`
+        .home-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          grid-template-rows: 1fr 1fr;
+          gap: 1px;
+          background: ${DIVIDER};
+          flex: 1;
+        }
+        .email-strip {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 20px;
+        }
+        @media (max-width: 768px) {
+          .home-grid {
+            grid-template-columns: 1fr !important;
+            grid-template-rows: auto !important;
+          }
+          .email-strip {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+        }
+      `}</style>
 
-      <div style={{ maxWidth: 700, margin: "0 auto", padding: "40px 20px" }}>
-        {/* Hero */}
-        <div style={{ marginBottom: 48 }}>
-          <div style={{ marginBottom: 12 }}>
-            <span style={{ fontWeight: 900, fontSize: 36, color: CORAL }}>OuBiznes</span>
-            <span style={{ fontWeight: 900, fontSize: 36, color: NAVY }}>.mu</span>
-          </div>
-          <p style={{ fontSize: 18, color: NAVY, fontWeight: 700, marginBottom: 6 }}>
-            Free tools for Mauritian businesses.
-          </p>
-          <p style={{ fontSize: 15, color: "#6b7280", lineHeight: 1.6 }}>
-            Start, register, fund, and run your business — no consultants, no subscriptions, no jargon.
-          </p>
+      <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: CREAM, colorScheme: "light" }}>
+
+        {/* Flag bar */}
+        <div style={{ height: 8, display: "flex", flexShrink: 0 }}>
+          <div style={{ flex: 1, background: "#CC0000" }} />
+          <div style={{ flex: 1, background: BLUE }} />
+          <div style={{ flex: 1, background: GOLD }} />
+          <div style={{ flex: 1, background: GREEN }} />
         </div>
 
-        {/* Tool groups */}
-        {tools.map(group => (
-          <div key={group.group} style={{ marginBottom: 36 }}>
-            <h2 style={{ fontSize: 12, fontWeight: 700, color: "#9ca3af", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 12 }}>
-              {group.group}
-            </h2>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {group.items.map(tool => {
-                const isHovered = hoveredHref === tool.href;
-                const card = (
-                  <div
-                    style={{
-                      background: "#fff",
-                      border: `1.5px solid ${isHovered && tool.live ? CORAL : "#e5e7eb"}`,
-                      borderRadius: 14,
-                      padding: "16px 20px",
-                      display: "flex",
-                      alignItems: "flex-start",
-                      gap: 14,
-                      cursor: tool.live ? "pointer" : "default",
-                      transition: "border-color 0.15s ease",
-                      opacity: tool.live ? 1 : 0.85,
-                    }}
-                    onMouseEnter={() => setHoveredHref(tool.href)}
-                    onMouseLeave={() => setHoveredHref(null)}
-                  >
-                    <span style={{ fontSize: 26, flexShrink: 0, marginTop: 1 }}>{tool.emoji}</span>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
-                        <span style={{ fontWeight: 700, fontSize: 15, color: NAVY }}>{tool.title}</span>
-                        {tool.tag && (
-                          <span style={{
-                            background: tool.tagColor,
-                            color: tool.tagTextColor || "#fff",
-                            fontSize: 10, fontWeight: 700,
-                            padding: "2px 8px", borderRadius: 99,
-                          }}>
-                            {tool.tag}
-                          </span>
-                        )}
-                      </div>
-                      <p style={{ fontSize: 13, color: "#6b7280", margin: 0, lineHeight: 1.5 }}>{tool.desc}</p>
-                      {tool.notice && (
-                        <div style={{ marginTop: 8, background: "#F0F7FF", borderRadius: 8, padding: "8px 12px" }}>
-                          <p style={{ fontSize: 12, color: "#1E5AA0", margin: 0, lineHeight: 1.5 }}>
-                            🤝 {tool.notice}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                    {tool.live && (
-                      <span style={{ color: "#d1d5db", fontSize: 18, flexShrink: 0, alignSelf: "center" }}>→</span>
+        {/* Header */}
+        <header style={{ padding: "14px 28px", background: CREAM, flexShrink: 0, borderBottom: `1px solid ${DIVIDER}` }}>
+          <div>
+            <span style={{ fontWeight: 900, fontSize: 22, color: CORAL }}>OuBiznes</span>
+            <span style={{ fontWeight: 900, fontSize: 22, color: NAVY }}>.mu</span>
+          </div>
+          <p style={{ fontSize: 13, color: "#6b7280", margin: "2px 0 0 0" }}>
+            Free tools for Mauritian businesses — start, fund, and run smarter.
+          </p>
+        </header>
+
+        {/* 2×2 grid */}
+        <main className="home-grid">
+
+          {/* Top-left: STARTING A BUSINESS */}
+          <div style={quadrant}>
+            <div style={SECTION_HEADER}>Starting a Business</div>
+            {STARTING.map(t => (
+              <ToolRow key={t.href} tool={t} hovered={hovered === t.href}
+                onEnter={() => setHovered(t.href)} onLeave={() => setHovered(null)} />
+            ))}
+          </div>
+
+          {/* Top-right: FUNDING & GROWTH */}
+          <div style={quadrant}>
+            <div style={SECTION_HEADER}>Funding &amp; Growth</div>
+            {FUNDING.map(t => (
+              <ToolRow key={t.href} tool={t} hovered={hovered === t.href}
+                onEnter={() => setHovered(t.href)} onLeave={() => setHovered(null)} />
+            ))}
+          </div>
+
+          {/* Bottom-left: COMPLIANCE & OPERATIONS */}
+          <div style={quadrant}>
+            <div style={SECTION_HEADER}>Compliance &amp; Operations</div>
+            {COMPLIANCE.map(t => (
+              <ToolRow key={t.href} tool={t} hovered={hovered === t.href}
+                onEnter={() => setHovered(t.href)} onLeave={() => setHovered(null)} />
+            ))}
+          </div>
+
+          {/* Bottom-right: COMING NEXT — VOTE */}
+          <div style={quadrant}>
+            <div style={SECTION_HEADER}>Coming Next — Vote</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              {COMING_NEXT.map(item => (
+                <div key={item.id} style={{ background: "#fff", border: "1px solid #e8e3da", borderRadius: 8, padding: "10px 12px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 3, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: "#1a2332" }}>{item.title}</span>
+                    {item.hot && (
+                      <span style={{ fontSize: 9, fontWeight: 700, background: "#FEF9C3", color: "#854F0B", padding: "1px 6px", borderRadius: 99 }}>
+                        Hot
+                      </span>
                     )}
                   </div>
-                );
-
-                return tool.live ? (
-                  <Link key={tool.href} href={tool.href} style={{ textDecoration: "none" }}>
-                    {card}
-                  </Link>
-                ) : (
-                  <div key={tool.href}>{card}</div>
-                );
-              })}
+                  <div style={{ fontSize: 10, color: "#aaa", marginBottom: 8, lineHeight: 1.4 }}>{item.desc}</div>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <button
+                      onClick={() => vote(item.id)}
+                      style={{ background: PRIMARY, color: "#fff", border: "none", borderRadius: 10, padding: "4px 11px", fontWeight: 700, fontSize: 11, cursor: "pointer" }}
+                    >
+                      Vote
+                    </button>
+                    <span style={{ fontSize: 10, color: "#bbb" }}>{votes[item.id]} votes</span>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-        ))}
-        {/* Email capture */}
-        <div style={{ background: "#fff", border: "1.5px solid #e5e7eb", borderRadius: 14, padding: "20px 24px", marginBottom: 24 }}>
-          <p style={{ fontSize: 14, fontWeight: 700, color: NAVY, marginBottom: 4 }}>
-            Stay updated — free tools, new features, grant alerts.
-          </p>
-          <p style={{ fontSize: 13, color: "#6b7280", marginBottom: 12 }}>
-            No spam. One email when something useful drops.
-          </p>
-          <form
-            action="https://formspree.io/f/maqabeqb"
-            method="POST"
-            style={{ display: "flex", gap: 8 }}
-          >
+        </main>
+
+        {/* Email signup strip */}
+        <div className="email-strip" style={{ background: "#fff", borderTop: `1px solid #e0d9ce`, padding: "12px 40px", flexShrink: 0 }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: NAVY }}>Stay updated — free tools, new features, grant alerts.</div>
+            <div style={{ fontSize: 11, color: "#6b7280" }}>No spam. One email when something useful drops.</div>
+          </div>
+          <form action="https://formspree.io/f/maqabeqb" method="POST" style={{ display: "flex", gap: 8, flexShrink: 0 }}>
             <input
               type="email"
               name="email"
               placeholder="your@email.com"
               required
-              style={{ flex: 1, padding: "11px 16px", borderRadius: 10, border: "1.5px solid #e5e7eb", fontSize: 14, color: NAVY, outline: "none" }}
+              style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid #e0d9ce", fontSize: 13, color: NAVY, outline: "none", width: 200 }}
             />
             <button
               type="submit"
-              style={{ padding: "11px 20px", background: CORAL, color: "#fff", border: "none", borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: "pointer" }}
+              style={{ padding: "8px 16px", background: PRIMARY, color: "#fff", border: "none", borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: "pointer" }}
             >
               Notify me
             </button>
           </form>
         </div>
-        {/* Footer tagline */}
-        <div style={{ textAlign: "center", paddingTop: 24, borderTop: "1px solid #e5e7eb" }}>
-          <p style={{ fontSize: 14, color: "#9ca3af", fontStyle: "italic" }}>
-            Ou biznes, nou lafors. 🇲🇺
-          </p>
-          <p style={{ fontSize: 12, color: "#d1d5db", marginTop: 4 }}>
-            © 2026 OuBiznes.mu ·{" "}
-            <a href="mailto:contact@oubiznes.mu" style={{ color: CORAL, textDecoration: "underline" }}>contact@oubiznes.mu</a>
-          </p>
-        </div>
+
+        {/* SPAK status bar */}
+        <footer style={{ background: "#1a2332", padding: "10px 40px", display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+          <div style={{ width: 7, height: 7, borderRadius: "50%", background: PRIMARY, flexShrink: 0 }} />
+          <span style={{ fontSize: 11, color: "#9ca3af" }}>
+            All 8 tools live and monitored. MRA regulatory data verified today · Grants data current · Deadlines up to date · Powered by SPAK
+          </span>
+        </footer>
+
       </div>
-    </div>
+    </>
   );
 }
