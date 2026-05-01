@@ -146,6 +146,12 @@ export default function Home() {
   }
 
   const quadrant: React.CSSProperties = { background: CREAM, padding: "16px 28px", overflow: "auto" };
+  const hairline = "1px solid #ede8df";
+  const q = (col: 1 | 2, row: 1 | 2): React.CSSProperties => ({
+    ...quadrant,
+    borderLeft:  col === 2 ? hairline : "none",
+    borderTop:   row === 2 ? hairline : "none",
+  });
 
   return (
     <>
@@ -154,8 +160,8 @@ export default function Home() {
           display: grid;
           grid-template-columns: 1fr 1fr;
           grid-template-rows: 1fr 1fr;
-          gap: 1px;
-          background: ${DIVIDER};
+          gap: 0;
+          background: transparent;
           flex: 1;
         }
         .email-strip {
@@ -201,7 +207,7 @@ export default function Home() {
         <main className="home-grid">
 
           {/* Top-left: STARTING A BUSINESS */}
-          <div style={quadrant}>
+          <div style={q(1, 1)}>
             <div style={SECTION_HEADER}>Starting a Business</div>
             {STARTING.map(t => (
               <ToolRow key={t.href} tool={t} hovered={hovered === t.href}
@@ -210,7 +216,7 @@ export default function Home() {
           </div>
 
           {/* Top-right: FUNDING & GROWTH */}
-          <div style={quadrant}>
+          <div style={q(2, 1)}>
             <div style={SECTION_HEADER}>Funding &amp; Growth</div>
             {FUNDING.map(t => (
               <ToolRow key={t.href} tool={t} hovered={hovered === t.href}
@@ -219,7 +225,7 @@ export default function Home() {
           </div>
 
           {/* Bottom-left: COMPLIANCE & OPERATIONS */}
-          <div style={quadrant}>
+          <div style={q(1, 2)}>
             <div style={SECTION_HEADER}>Compliance &amp; Operations</div>
             {COMPLIANCE.map(t => (
               <ToolRow key={t.href} tool={t} hovered={hovered === t.href}
@@ -228,7 +234,7 @@ export default function Home() {
           </div>
 
           {/* Bottom-right: COMING NEXT — VOTE */}
-          <div style={quadrant}>
+          <div style={q(2, 2)}>
             <div style={SECTION_HEADER}>Coming Next — Vote</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
               {COMING_NEXT.map(item => {
