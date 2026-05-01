@@ -132,6 +132,7 @@ These rules are NON-NEGOTIABLE and must be applied everywhere:
 - `TWILIO_AUTH_TOKEN` — from console.twilio.com
 - `TWILIO_WHATSAPP_FROM` — sandbox: whatsapp:+14155238886
 - `OPERATOR_WHATSAPP` — your WhatsApp number: whatsapp:+2305XXXXXXX
+- `CRON_SECRET` — any strong random string; set in Vercel dashboard; Vercel sends it as `Authorization: Bearer` header when triggering cron jobs
 
 ### AI Model Strategy
 - Business Plan Generator primary: `gemini-2.5-flash`
@@ -141,6 +142,10 @@ These rules are NON-NEGOTIABLE and must be applied everywhere:
 ### Vercel Environment Variables
 - `GEMINI_API_KEY` must be set in Vercel dashboard
 - `ANTHROPIC_API_KEY` must be set in Vercel dashboard
+- `CRON_SECRET` must be set in Vercel dashboard (generate with: `openssl rand -hex 32`)
+- `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` must be set in Vercel dashboard
+- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` must be set in Vercel dashboard
+- `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM`, `OPERATOR_WHATSAPP` must be set in Vercel dashboard
 - Never rely on .env.local for production
 
 ## 7. BRN LOOKUP — ARCHITECTURE (completed April 2026)
@@ -197,6 +202,8 @@ Tables: `projects`, `email_subscribers`, `feature_votes`, `agent_runs`, `spak_st
 | `app/api/subscribe/route.ts` | POST — saves email to Supabase |
 | `app/api/votes/route.ts` | GET counts / POST vote (fingerprint dedup) |
 | `app/api/spak/status/route.ts` | GET latest status line for footer |
+| `app/api/spak/briefing/route.ts` | GET — Vercel Cron handler (protected by CRON_SECRET) |
+| `vercel.json` | Cron schedule: 0 3 * * * (03:00 UTC = 07:00 MU) |
 
 ### Morning Briefing — npm run spak-briefing
 - Checks site health (4 endpoints)
