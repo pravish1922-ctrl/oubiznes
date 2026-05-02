@@ -26,3 +26,6 @@ logs/
 
 # TypeScript build info
 tsconfig.tsbuildinfo
+
+# Obsidian wiki vault (local knowledge base)
+obsidian-vault/

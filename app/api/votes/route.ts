@@ -5,11 +5,10 @@ import { createHash } from 'crypto';
 const VALID_FEATURES = new Set(['tiktok', 'website', 'marketplace', 'ai-learning']);
 
 function getDb() {
-  return createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false } }
-  );
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) return null;
+  return createClient(url, key, { auth: { persistSession: false } });
 }
 
 function fingerprint(request: Request): string {
@@ -20,17 +19,18 @@ function fingerprint(request: Request): string {
 
 // GET /api/votes — return { tiktok: 5, website: 3, ... }
 export async function GET() {
-  if (!process.env.SUPABASE_URL) {
+  const db = getDb();
+  if (!db) {
     return NextResponse.json({ tiktok: 0, website: 0, marketplace: 0, 'ai-learning': 0 });
   }
 
-  const db = getDb();
   const { data, error } = await db
     .from('feature_votes')
     .select('feature_id')
     .eq('project', 'oubiznes');
 
   if (error) {
+    console.error('[votes GET] Supabase error:', error.message, error.code);
     return NextResponse.json({ tiktok: 0, website: 0, marketplace: 0, 'ai-learning': 0 });
   }
 
@@ -62,14 +62,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid email' }, { status: 400 });
   }
 
-  if (!process.env.SUPABASE_URL) {
+  const db = getDb();
+  if (!db) {
     return NextResponse.json({ ok: true, persisted: false });
   }
 
-  const db = getDb();
-
-  // Check for existing vote by this email for this feature
-  const { data: existing } = await db
+  // Check for existing vote from this email for this feature
+  const { data: existing, error: checkError } = await db
     .from('feature_votes')
     .select('id')
     .eq('project', 'oubiznes')
@@ -77,20 +76,26 @@ export async function POST(request: Request) {
     .eq('email', email)
     .maybeSingle();
 
+  if (checkError) {
+    console.error('[votes POST] Supabase check error:', checkError.message, checkError.code);
+    return NextResponse.json({ error: 'Failed to check existing vote' }, { status: 500 });
+  }
+
   if (existing) {
     return NextResponse.json({ ok: true, already: true });
   }
 
   const fp = fingerprint(request);
-  const { error } = await db.from('feature_votes').insert({
+  const { error: insertError } = await db.from('feature_votes').insert({
     project:     'oubiznes',
     feature_id:  featureId,
     email,
     fingerprint: fp,
   });
 
-  if (error) {
-    return NextResponse.json({ error: 'Failed to record' }, { status: 500 });
+  if (insertError) {
+    console.error('[votes POST] Supabase insert error:', insertError.message, insertError.code);
+    return NextResponse.json({ error: 'Failed to record vote' }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true });

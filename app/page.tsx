@@ -102,6 +102,17 @@ export default function Home() {
   const [modalEmail, setModalEmail] = useState("");
   const [modalStatus, setModalStatus] = useState<ModalStatus>("idle");
 
+  // Restore voted state from localStorage (persists across page refreshes)
+  useEffect(() => {
+    const restored = new Set<string>();
+    for (const item of COMING_NEXT) {
+      if (localStorage.getItem(`voted_${item.id}`) === "true") {
+        restored.add(item.id);
+      }
+    }
+    if (restored.size > 0) setVoted(restored);
+  }, []);
+
   // Load vote counts from Supabase
   useEffect(() => {
     fetch("/api/votes")
@@ -144,14 +155,17 @@ export default function Home() {
       const data = await res.json();
       if (data.already) {
         setModalStatus("already");
-      } else if (res.ok || data.ok) {
+      } else if ((res.ok || data.ok) && !data.error) {
+        localStorage.setItem(`voted_${modal.featureId}`, "true");
         setVotes(v => ({ ...v, [modal.featureId]: v[modal.featureId] + 1 }));
         setVoted(s => new Set(s).add(modal.featureId));
         setModalStatus("done");
       } else {
+        console.error("[vote] API error:", data.error ?? "unknown", "status:", res.status);
         setModalStatus("error");
       }
-    } catch {
+    } catch (err) {
+      console.error("[vote] Network error:", err);
       setModalStatus("error");
     }
   }
@@ -261,7 +275,7 @@ export default function Home() {
 
             {modalStatus === "already" && (
               <div style={{ background: "#D1FAE5", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#065F46", marginBottom: 12 }}>
-                You&apos;ve already voted! We&apos;ll notify you when it launches.
+                You&apos;ve already voted for this with that email!
               </div>
             )}
 

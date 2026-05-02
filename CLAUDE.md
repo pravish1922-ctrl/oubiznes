@@ -364,3 +364,14 @@ Always commit .env.local to .gitignore — never push API keys.
 | 6 | Agents 2, 3, 4 — in order | 3–4 hours each |
 
 Total remaining to solid v1: ~12–15 hours across 5–7 sessions.
+
+## 15. WIKI KNOWLEDGE BASE
+
+- Vault path: ./obsidian-vault/
+- When you need context not already in this project:
+  1. Read obsidian-vault/wiki/hot.md first (recent context cache)
+  2. Read obsidian-vault/wiki/index.md if hot.md not enough
+  3. Drill into specific wiki pages only if needed
+- Do NOT read the wiki for general coding tasks
+- After major sessions: run /save to file the conversation as a wiki note
+- Weekly: run lint the wiki to keep vault healthy
