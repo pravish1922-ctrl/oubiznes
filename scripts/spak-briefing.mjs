@@ -35,8 +35,8 @@ const HEALTH_ENDPOINTS = [
 
 // ── SUPABASE CLIENT ───────────────────────────────────────────────────────────
 function getSupabase() {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) {
     console.warn('[briefing] Supabase not configured — stats will be empty');
     return null;

@@ -1,15 +1,18 @@
 #!/usr/bin/env node
 /**
- * Agent 5 — Regulatory Update Agent v3 (autonomous, search-first)
+ * Agent 5 — Regulatory Update Agent v4
  *
- * No hardcoded URLs. For each source, searches DuckDuckGo to find the
- * current page on the official domain, then fetches and extracts values.
+ * URL strategy: URLs always come from Supabase regulatory_rates.source_url.
+ * No hardcoded URLs anywhere in this file.
  *
- * Safety rule: unverified ≠ changed. A value that cannot be extracted or
- * fails validation is marked "unverified" — no false alarm. Only a positive
- * extraction that differs from the stored value triggers an alert.
- *
- * Validation: percentage rates above 50 are rejected as implausible.
+ * Per-source flow:
+ *   1. Get source_url from DB for each rate group
+ *   2. Fetch that URL directly
+ *   3. If fetch fails → Google fallback (site:[domain] [searchHint] 2026)
+ *   4. Extract value via keyword regex
+ *   5. Validate: percentage > 50 is implausible → mark unverified
+ *   6. Compare with stored value → alert if different
+ *   7. Mark unverified only if BOTH direct AND Google fail
  */
 
 import { writeFileSync, mkdirSync } from 'fs';
@@ -25,8 +28,8 @@ const PROJECT   = 'oubiznes';
 
 // ── SUPABASE ──────────────────────────────────────────────────────────────────
 function getDb() {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) { console.warn('[regulatory] Supabase not configured'); return null; }
   return createClient(url, key, { auth: { persistSession: false } });
 }
@@ -43,51 +46,47 @@ const isValidPercent   = v => { const n = parseFloat(v); return !isNaN(n) && n >
 const isValidWage      = v => { const n = parseFloat(v); return !isNaN(n) && n >= 5000 && n <= 200000; };
 const isValidThreshold = v => { const n = parseFloat(v); return !isNaN(n) && n >= 500000 && n <= 100000000; };
 
-// ── WEB SEARCH (DuckDuckGo HTML — no API key required) ───────────────────────
-async function searchForUrl(query, domain) {
-  const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
+// ── HTTP ──────────────────────────────────────────────────────────────────────
+async function fetchPage(url) {
   try {
     const res = await fetch(url, {
       headers: {
         'User-Agent':      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Accept':          'text/html,application/xhtml+xml',
+        'Accept':          'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.9',
       },
       signal: AbortSignal.timeout(15_000),
     });
-    if (!res.ok) return null;
-    const html  = await res.text();
-    const esc   = domain.replace(/\./g, '\\.');
-    const regex = new RegExp(`https?://(?:[a-z0-9.-]+\\.)*${esc}[^"'\\s<>]*`, 'gi');
-    const matches = html.match(regex) ?? [];
-    return matches.find(u => !u.includes('duckduckgo')) ?? null;
-  } catch {
-    return null;
-  }
-}
-
-// ── FETCH PAGE ────────────────────────────────────────────────────────────────
-async function fetchPage(url) {
-  try {
-    const res = await fetch(url, {
-      headers: { 'User-Agent': 'OuBiznes.mu Regulatory Monitor/3.0', Accept: 'text/html' },
-      signal:  AbortSignal.timeout(15_000),
-    });
     if (!res.ok) return { ok: false, error: `HTTP ${res.status}` };
-    const html = await res.text();
-    const text = html.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ');
-    return { ok: true, text };
+    const rawHtml = await res.text();
+    const text    = rawHtml.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ');
+    return { ok: true, text, rawHtml };
   } catch (err) {
     return { ok: false, error: err.message };
   }
 }
 
-// ── SOURCES (search-first — no hardcoded URLs) ────────────────────────────────
+// ── GOOGLE FALLBACK ───────────────────────────────────────────────────────────
+async function googleSearchForUrl(searchHint, domain) {
+  const query = `site:${domain} ${searchHint}`;
+  const url   = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+  console.log(`  Google fallback: ${url}`);
+  const { ok, rawHtml } = await fetchPage(url);
+  if (!ok || !rawHtml) return null;
+
+  // Find URLs matching the target domain in the raw Google HTML
+  const esc     = domain.replace(/\./g, '\\.');
+  const regex   = new RegExp(`https?://(?:[a-z0-9.-]+\\.)*${esc}[^"'<>\\s&]*`, 'gi');
+  const matches = rawHtml.match(regex) ?? [];
+  const found   = matches.find(u => !u.includes('google.com') && !u.includes('googleapis'));
+  return found ?? null;
+}
+
+// ── SOURCES (no URLs — come from Supabase source_url field) ───────────────────
 const SOURCES = [
   {
     name:          'MRA — VAT',
-    searchQuery:   'site:mra.mu VAT standard rate registration threshold 2025',
-    domain:        'mra.mu',
+    searchHint:    'VAT standard rate registration threshold 2026',
     topicKeywords: ['VAT', 'value added'],
     rates:         ['vat_standard_rate', 'vat_registration_threshold'],
     extract(text) {
@@ -107,8 +106,7 @@ const SOURCES = [
   },
   {
     name:          'MRA — PAYE / CSG / NSF',
-    searchQuery:   'site:mra.mu PAYE income tax CSG NSF employer employee rates bands 2025',
-    domain:        'mra.mu',
+    searchHint:    'PAYE income tax CSG NSF employer employee rates 2026',
     topicKeywords: ['CSG', 'PAYE', 'NSF'],
     rates: [
       'paye_band_1_rate', 'paye_band_2_rate', 'paye_band_3_rate',
@@ -134,8 +132,7 @@ const SOURCES = [
   },
   {
     name:          'HRDC — Training Levy',
-    searchQuery:   'site:hrdc.mu training levy rate employer percentage 2025',
-    domain:        'hrdc.mu',
+    searchHint:    'training levy rate employer percentage 2026',
     topicKeywords: ['Training Levy', 'levy'],
     rates:         ['hrdc_levy_rate'],
     extract(text) {
@@ -145,8 +142,7 @@ const SOURCES = [
   },
   {
     name:          'Labour — Minimum Wage',
-    searchQuery:   'site:labour.govmu.org national minimum wage Rs 2025 monthly',
-    domain:        'labour.govmu.org',
+    searchHint:    'national minimum wage Rs monthly 2026',
     topicKeywords: ['minimum wage', 'salaire'],
     rates:         ['minimum_wage'],
     extract(text) {
@@ -183,7 +179,7 @@ async function run() {
   const dateStr   = timestamp.slice(0, 10);
 
   console.log('\n══════════════════════════════════════════════════════════');
-  console.log('  OuBiznes.mu — Agent 5: Regulatory Update Check v3');
+  console.log('  OuBiznes.mu — Agent 5: Regulatory Update Check v4');
   console.log(`  ${timestamp}`);
   console.log('══════════════════════════════════════════════════════════\n');
 
@@ -198,41 +194,64 @@ async function run() {
   for (const source of SOURCES) {
     console.log(`Checking: ${source.name}`);
 
-    // Search for the current official page URL
-    console.log(`  Searching: ${source.searchQuery}`);
-    const foundUrl = await searchForUrl(source.searchQuery, source.domain);
-    if (!foundUrl) {
-      console.log(`  ✗ No result found for ${source.domain} — marking unverified`);
-      for (const name of source.rates) unverified.push(name);
-      await new Promise(r => setTimeout(r, 2000));
-      continue;
-    }
-    console.log(`  → ${foundUrl}`);
+    // Step 1: get source_url from DB for the first rate in this source's group
+    const firstRate = source.rates.map(n => rates[n]).find(r => r?.source_url);
+    const dbUrl     = firstRate?.source_url ?? null;
 
-    const { ok, text, error } = await fetchPage(foundUrl);
-    if (!ok) {
-      console.log(`  ✗ Unreachable: ${error}`);
+    if (!dbUrl) {
+      console.log(`  ✗ No source_url in DB for ${source.name} — marking unverified`);
       for (const name of source.rates) unverified.push(name);
-      await new Promise(r => setTimeout(r, 2000));
       continue;
     }
 
-    const topicFound = source.topicKeywords.find(kw => text.toLowerCase().includes(kw.toLowerCase()));
+    console.log(`  Direct fetch: ${dbUrl}`);
+    let fetchResult = await fetchPage(dbUrl);
+    let usedUrl     = dbUrl;
+
+    // Step 2: Google fallback if direct fetch fails
+    if (!fetchResult.ok) {
+      console.log(`  ✗ Direct fetch failed (${fetchResult.error}) — trying Google fallback`);
+      try {
+        const domain    = new URL(dbUrl).hostname;
+        const googleUrl = await googleSearchForUrl(source.searchHint, domain);
+        if (googleUrl) {
+          console.log(`  Google found: ${googleUrl}`);
+          fetchResult = await fetchPage(googleUrl);
+          usedUrl     = googleUrl;
+        }
+      } catch {
+        fetchResult = { ok: false, error: 'Google parse failed' };
+      }
+    }
+
+    if (!fetchResult.ok) {
+      console.log(`  ✗ Both direct and Google failed — marking unverified`);
+      for (const name of source.rates) unverified.push(name);
+      await new Promise(r => setTimeout(r, 1500));
+      continue;
+    }
+
+    // Step 3: verify topic on page
+    const topicFound = source.topicKeywords.find(kw =>
+      fetchResult.text.toLowerCase().includes(kw.toLowerCase())
+    );
     if (!topicFound) {
       console.log('  ? Topic keywords not found — page may have changed structure. Marking unverified.');
       for (const name of source.rates) unverified.push(name);
-      await new Promise(r => setTimeout(r, 2000));
+      await new Promise(r => setTimeout(r, 1500));
       continue;
     }
 
-    const extracted = source.extract(text);
+    // Step 4: extract values
+    const extracted = source.extract(fetchResult.text);
     console.log(`  ✓ Reachable. Extracted: ${JSON.stringify(extracted)}`);
 
-    for (const rateName of source.rates) {
-      const stored = rates[rateName];
-      if (!stored) { unverified.push(rateName); continue; }
-
+    // Step 5: compare each rate
+    const ratesInDb = source.rates.filter(n => rates[n]);
+    for (const rateName of ratesInDb) {
+      const stored       = rates[rateName];
       const extractedVal = extracted[rateName];
+
       if (extractedVal === undefined || extractedVal === null) {
         console.log(`    unverified  ${rateName} (could not extract)`);
         unverified.push(rateName);
@@ -249,14 +268,13 @@ async function run() {
           rate_name:   rateName,
           old_value:   stored.rate_value,
           new_value:   String(extractedVal),
-          source_url:  foundUrl,
+          source_url:  usedUrl,
           detected_at: timestamp,
         });
       }
     }
 
-    // Delay between sources to avoid rate-limiting
-    await new Promise(r => setTimeout(r, 2000));
+    await new Promise(r => setTimeout(r, 1500));
   }
 
   // Write changes to DB + send alerts
@@ -285,7 +303,7 @@ async function run() {
     ? `All ${verified.length} rates verified ✅`
     : changes.length > 0
       ? `${changes.length} change(s) detected — pending approval`
-      : `${verified.length} verified · ${unverified.length} unverified (PDFs/JS pages)`;
+      : `${verified.length} verified · ${unverified.length} unverified (fetch/extract failed)`;
 
   console.log(`\n══ ${summary}\n`);
 
