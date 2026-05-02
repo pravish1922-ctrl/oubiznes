@@ -69,11 +69,11 @@ async function checkSiteHealth() {
 
 // ── SUPABASE STATS ────────────────────────────────────────────────────────────
 async function fetchStats(db) {
-  if (!db) return { subscribers: 0, newSubscribers: 0, votes: {}, lastRegCheck: null };
+  if (!db) return { subscribers: 0, newSubscribers: 0, votes: {}, lastRegCheck: null, activeSubscribers: 0, newProfiles: 0, newSuggestions: 0, topSuggestion: null, lastDigest: null };
 
   const yesterday = new Date(Date.now() - 86_400_000).toISOString();
 
-  const [subTotal, subNew, votesRaw, lastRun] = await Promise.all([
+  const [subTotal, subNew, votesRaw, lastRun, activeSubs, newProfiles, newSuggestions, topSuggestion, lastDigest] = await Promise.all([
     db.from('email_subscribers').select('id', { count: 'exact', head: true }).eq('project', PROJECT),
     db.from('email_subscribers').select('id', { count: 'exact', head: true })
       .eq('project', PROJECT).gte('created_at', yesterday),
@@ -81,6 +81,11 @@ async function fetchStats(db) {
     db.from('agent_runs').select('run_at, status, summary, flags_count')
       .eq('project', PROJECT).eq('agent_name', 'regulatory-check')
       .order('run_at', { ascending: false }).limit(1),
+    db.from('subscribers').select('id', { count: 'exact', head: true }).eq('status', 'active'),
+    db.from('business_profiles').select('id', { count: 'exact', head: true }).gte('created_at', yesterday),
+    db.from('tool_suggestions').select('id', { count: 'exact', head: true }).gte('created_at', yesterday),
+    db.from('tool_suggestions').select('title, votes, willing_to_pay').order('votes', { ascending: false }).limit(1),
+    db.from('agent_runs').select('run_at, status').eq('project', PROJECT).eq('agent_name', 'weekly-digest').order('run_at', { ascending: false }).limit(1),
   ]);
 
   // Tally votes by feature
@@ -90,10 +95,15 @@ async function fetchStats(db) {
   }
 
   return {
-    subscribers:    subTotal.count  || 0,
-    newSubscribers: subNew.count    || 0,
+    subscribers:       subTotal.count    || 0,
+    newSubscribers:    subNew.count      || 0,
     votes,
-    lastRegCheck:   lastRun.data?.[0] || null,
+    lastRegCheck:      lastRun.data?.[0] || null,
+    activeSubscribers: activeSubs.count  || 0,
+    newProfiles:       newProfiles.count || 0,
+    newSuggestions:    newSuggestions.count || 0,
+    topSuggestion:     topSuggestion.data?.[0] || null,
+    lastDigest:        lastDigest.data?.[0] || null,
   };
 }
 
@@ -155,16 +165,29 @@ function formatBriefing(stats, health, deadline, now) {
     ? `${deadline.label} due in ${deadline.daysAway} day${deadline.daysAway !== 1 ? 's' : ''} (${formatDate(deadline.date)})`
     : 'No deadline within 7 days';
 
-  const newSubs = stats.newSubscribers > 0 ? ` (+${stats.newSubscribers} new)` : '';
+  const newSubs      = stats.newSubscribers > 0 ? ` (+${stats.newSubscribers} new)` : '';
+  const activeSuffix = stats.activeSubscribers > 0 ? ` (${stats.activeSubscribers} active)` : '';
+  const newProfilesStr   = stats.newProfiles    > 0 ? `💼 Business profiles today: ${stats.newProfiles}` : null;
+  const newSuggestionsStr = stats.newSuggestions > 0 ? `🔧 Tool suggestions today: ${stats.newSuggestions}` : null;
+  const topSugStr = stats.topSuggestion
+    ? `🔝 Top suggestion: "${stats.topSuggestion.title}" (${stats.topSuggestion.votes} votes${stats.topSuggestion.willing_to_pay ? ', ' + stats.topSuggestion.willing_to_pay : ''})`
+    : null;
+  const digestStr = stats.lastDigest
+    ? `📬 Last weekly digest: ${formatDate(stats.lastDigest.run_at)} — ${stats.lastDigest.status}`
+    : '📬 Weekly digest: not sent yet';
 
   const lines = [
     `*SPAK Morning Brief — ${dateStr}*`,
     '',
-    `📧 Subscribers: ${stats.subscribers}${newSubs}`,
+    `📧 Subscribers: ${stats.subscribers}${newSubs}${activeSuffix}`,
     `🗳️  Top vote: ${topVoteStr}`,
     `${healthIcon} Site health: ${healthStr}`,
     `📋 Regulatory: ${regStr}`,
     `⏰ Next deadline: ${deadlineStr}`,
+    ...(newProfilesStr    ? [newProfilesStr]    : []),
+    ...(newSuggestionsStr ? [newSuggestionsStr] : []),
+    ...(topSugStr         ? [topSugStr]         : []),
+    digestStr,
     '',
     '_OuBiznes.mu — Powered by SPAK_',
   ];

@@ -1,18 +1,15 @@
 #!/usr/bin/env node
 /**
- * Agent 5 — Regulatory Update Agent (OuBiznes.mu) v2
+ * Agent 5 — Regulatory Update Agent v3 (autonomous, search-first)
  *
- * 1. Loads reference values from Supabase regulatory_rates table
- * 2. Fetches official MRA/HRDC/Labour source pages
- * 3. Extracts key values using regex patterns
- * 4. Compares extracted values with stored values:
- *    - match       → "verified"
- *    - different   → writes pending_approval to agent_runs, sends WA + email alert
- *    - unextracted → "unverified" (no false alarm — MRA often uses PDFs)
- * 5. Writes overall run status to agent_runs + spak_status
+ * No hardcoded URLs. For each source, searches DuckDuckGo to find the
+ * current page on the official domain, then fetches and extracts values.
  *
- * Run:  npm run regulatory-check
- * Schedule: Windows Task Scheduler — weekly Monday 08:00 MU time
+ * Safety rule: unverified ≠ changed. A value that cannot be extracted or
+ * fails validation is marked "unverified" — no false alarm. Only a positive
+ * extraction that differs from the stored value triggers an alert.
+ *
+ * Validation: percentage rates above 50 are rejected as implausible.
  */
 
 import { writeFileSync, mkdirSync } from 'fs';
@@ -41,79 +38,39 @@ async function loadRates(db) {
   return Object.fromEntries(data.map(r => [r.rate_name, r]));
 }
 
-// ── SOURCES + EXTRACTORS ──────────────────────────────────────────────────────
-const SOURCES = [
-  {
-    name: 'MRA — VAT',
-    url:  'https://www.mra.mu/index.php/mvat',
-    topicKeywords: ['VAT', 'value added'],
-    rates: ['vat_standard_rate', 'vat_registration_threshold'],
-    extract(text) {
-      const out = {};
-      const vatM = text.match(/(?:standard\s+rate|vat\s+rate)[^%\d]{0,60}(\d+(?:\.\d+)?)\s*%/i)
-                || text.match(/(\d+(?:\.\d+)?)\s*%[^%\n]{0,60}(?:standard|vat\s+rate)/i);
-      if (vatM) out['vat_standard_rate'] = vatM[1];
+// ── VALIDATION ────────────────────────────────────────────────────────────────
+const isValidPercent   = v => { const n = parseFloat(v); return !isNaN(n) && n >= 0 && n <= 50; };
+const isValidWage      = v => { const n = parseFloat(v); return !isNaN(n) && n >= 5000 && n <= 200000; };
+const isValidThreshold = v => { const n = parseFloat(v); return !isNaN(n) && n >= 500000 && n <= 100000000; };
 
-      const thrM = text.match(/Rs\.?\s*([\d,]+)\s*(?:per\s*year|\/\s*year|per\s*annum)/i)
-                || text.match(/(3[,\s]?000[,\s]?000)/);
-      if (thrM) out['vat_registration_threshold'] = thrM[1].replace(/[,\s]/g, '');
-      return out;
-    },
-  },
-  {
-    name: 'MRA — PAYE / CSG / NSF',
-    url:  'https://www.mra.mu/index.php/employers/employment',
-    topicKeywords: ['CSG', 'PAYE', 'NSF'],
-    rates: [
-      'paye_band_1_rate', 'paye_band_2_rate', 'paye_band_3_rate',
-      'csg_employee_low', 'csg_employee_high',
-      'csg_employer_low', 'csg_employer_high',
-      'nsf_employee_rate', 'nsf_employer_rate',
-    ],
-    extract(text) {
-      const out = {};
-      const b1 = text.match(/(?:first|band\s*1)[^%\d]{0,80}(\d+)\s*%/i);
-      if (b1) out['paye_band_1_rate'] = b1[1];
-      const b2 = text.match(/(?:next|second|band\s*2)[^%\d]{0,80}(\d+)\s*%/i);
-      if (b2) out['paye_band_2_rate'] = b2[1];
-      const b3 = text.match(/(?:above|third|band\s*3|remaining)[^%\d]{0,80}(\d+)\s*%/i);
-      if (b3) out['paye_band_3_rate'] = b3[1];
+// ── WEB SEARCH (DuckDuckGo HTML — no API key required) ───────────────────────
+async function searchForUrl(query, domain) {
+  const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
+  try {
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent':      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept':          'text/html,application/xhtml+xml',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!res.ok) return null;
+    const html  = await res.text();
+    const esc   = domain.replace(/\./g, '\\.');
+    const regex = new RegExp(`https?://(?:[a-z0-9.-]+\\.)*${esc}[^"'\\s<>]*`, 'gi');
+    const matches = html.match(regex) ?? [];
+    return matches.find(u => !u.includes('duckduckgo')) ?? null;
+  } catch {
+    return null;
+  }
+}
 
-      const csgL  = text.match(/(?:csg|contribution)[^%\d]{0,120}(1\.5)\s*%/i);
-      if (csgL) { out['csg_employee_low'] = csgL[1]; out['csg_employer_low'] = csgL[1]; }
-      const csgH  = text.match(/(?:csg|contribution)[^%\d]{0,120}(6)\s*%/i);
-      if (csgH) out['csg_employer_high'] = csgH[1];
-      return out;
-    },
-  },
-  {
-    name: 'HRDC — Training Levy',
-    url:  'https://www.hrdc.mu/',
-    topicKeywords: ['Training Levy', 'levy'],
-    rates: ['hrdc_levy_rate'],
-    extract(text) {
-      const m = text.match(/(?:training\s+levy|levy)[^%\d]{0,80}(\d+(?:\.\d+)?)\s*%/i);
-      return m ? { hrdc_levy_rate: m[1] } : {};
-    },
-  },
-  {
-    name: 'Labour — Minimum Wage',
-    url:  'https://labour.govmu.org/',
-    topicKeywords: ['minimum wage', 'salaire'],
-    rates: ['minimum_wage'],
-    extract(text) {
-      const m = text.match(/(?:national\s+minimum\s+wage|minimum\s+wage)[^R\d]{0,60}Rs?\.?\s*([\d,]+)/i)
-             || text.match(/Rs?\.?\s*(16[,\s]?500)/i);
-      return m ? { minimum_wage: m[1].replace(/[,\s]/g, '') } : {};
-    },
-  },
-];
-
-// ── FETCH ─────────────────────────────────────────────────────────────────────
+// ── FETCH PAGE ────────────────────────────────────────────────────────────────
 async function fetchPage(url) {
   try {
     const res = await fetch(url, {
-      headers: { 'User-Agent': 'OuBiznes.mu Regulatory Monitor/2.0', Accept: 'text/html' },
+      headers: { 'User-Agent': 'OuBiznes.mu Regulatory Monitor/3.0', Accept: 'text/html' },
       signal:  AbortSignal.timeout(15_000),
     });
     if (!res.ok) return { ok: false, error: `HTTP ${res.status}` };
@@ -124,6 +81,83 @@ async function fetchPage(url) {
     return { ok: false, error: err.message };
   }
 }
+
+// ── SOURCES (search-first — no hardcoded URLs) ────────────────────────────────
+const SOURCES = [
+  {
+    name:          'MRA — VAT',
+    searchQuery:   'site:mra.mu VAT standard rate registration threshold 2025',
+    domain:        'mra.mu',
+    topicKeywords: ['VAT', 'value added'],
+    rates:         ['vat_standard_rate', 'vat_registration_threshold'],
+    extract(text) {
+      const out = {};
+      const vatM = text.match(/(?:standard\s+rate|vat\s+rate)[^%\d]{0,60}(\d+(?:\.\d+)?)\s*%/i)
+                || text.match(/(\d+(?:\.\d+)?)\s*%[^%\n]{0,60}standard/i);
+      if (vatM && isValidPercent(vatM[1])) out['vat_standard_rate'] = vatM[1];
+
+      const thrM = text.match(/Rs\.?\s*([\d,]+)\s*(?:per\s*year|\/\s*year|per\s*annum)/i)
+                || text.match(/(3[,\s]?000[,\s]?000)/);
+      if (thrM) {
+        const v = thrM[1].replace(/[,\s]/g, '');
+        if (isValidThreshold(v)) out['vat_registration_threshold'] = v;
+      }
+      return out;
+    },
+  },
+  {
+    name:          'MRA — PAYE / CSG / NSF',
+    searchQuery:   'site:mra.mu PAYE income tax CSG NSF employer employee rates bands 2025',
+    domain:        'mra.mu',
+    topicKeywords: ['CSG', 'PAYE', 'NSF'],
+    rates: [
+      'paye_band_1_rate', 'paye_band_2_rate', 'paye_band_3_rate',
+      'csg_employee_low', 'csg_employee_high',
+      'csg_employer_low', 'csg_employer_high',
+      'nsf_employee_rate', 'nsf_employer_rate',
+    ],
+    extract(text) {
+      const out = {};
+      const b1 = text.match(/(?:first|band\s*1)[^%\d]{0,80}(\d+)\s*%/i);
+      if (b1 && isValidPercent(b1[1])) out['paye_band_1_rate'] = b1[1];
+      const b2 = text.match(/(?:next|second|band\s*2)[^%\d]{0,80}(\d+)\s*%/i);
+      if (b2 && isValidPercent(b2[1])) out['paye_band_2_rate'] = b2[1];
+      const b3 = text.match(/(?:above|third|band\s*3|remaining)[^%\d]{0,80}(\d+)\s*%/i);
+      if (b3 && isValidPercent(b3[1])) out['paye_band_3_rate'] = b3[1];
+
+      const csgL = text.match(/(?:csg|contribution)[^%\d]{0,120}(1\.5)\s*%/i);
+      if (csgL) { out['csg_employee_low'] = csgL[1]; out['csg_employer_low'] = csgL[1]; }
+      const csgH = text.match(/(?:csg|contribution)[^%\d]{0,120}(6)\s*%/i);
+      if (csgH && isValidPercent(csgH[1])) out['csg_employer_high'] = csgH[1];
+      return out;
+    },
+  },
+  {
+    name:          'HRDC — Training Levy',
+    searchQuery:   'site:hrdc.mu training levy rate employer percentage 2025',
+    domain:        'hrdc.mu',
+    topicKeywords: ['Training Levy', 'levy'],
+    rates:         ['hrdc_levy_rate'],
+    extract(text) {
+      const m = text.match(/(?:training\s+levy|levy)[^%\d]{0,80}(\d+(?:\.\d+)?)\s*%/i);
+      return (m && isValidPercent(m[1])) ? { hrdc_levy_rate: m[1] } : {};
+    },
+  },
+  {
+    name:          'Labour — Minimum Wage',
+    searchQuery:   'site:labour.govmu.org national minimum wage Rs 2025 monthly',
+    domain:        'labour.govmu.org',
+    topicKeywords: ['minimum wage', 'salaire'],
+    rates:         ['minimum_wage'],
+    extract(text) {
+      const m = text.match(/(?:national\s+minimum\s+wage|minimum\s+wage)[^R\d]{0,60}Rs?\.?\s*([\d,]+)/i)
+             || text.match(/Rs?\.?\s*(16[,\s]?500)/i);
+      if (!m) return {};
+      const v = m[1].replace(/[,\s]/g, '');
+      return isValidWage(v) ? { minimum_wage: v } : {};
+    },
+  },
+];
 
 // ── ALERT FORMAT ──────────────────────────────────────────────────────────────
 function buildChangeAlert(change) {
@@ -149,7 +183,7 @@ async function run() {
   const dateStr   = timestamp.slice(0, 10);
 
   console.log('\n══════════════════════════════════════════════════════════');
-  console.log('  OuBiznes.mu — Agent 5: Regulatory Update Check v2');
+  console.log('  OuBiznes.mu — Agent 5: Regulatory Update Check v3');
   console.log(`  ${timestamp}`);
   console.log('══════════════════════════════════════════════════════════\n');
 
@@ -163,18 +197,31 @@ async function run() {
 
   for (const source of SOURCES) {
     console.log(`Checking: ${source.name}`);
-    const { ok, text, error } = await fetchPage(source.url);
 
+    // Search for the current official page URL
+    console.log(`  Searching: ${source.searchQuery}`);
+    const foundUrl = await searchForUrl(source.searchQuery, source.domain);
+    if (!foundUrl) {
+      console.log(`  ✗ No result found for ${source.domain} — marking unverified`);
+      for (const name of source.rates) unverified.push(name);
+      await new Promise(r => setTimeout(r, 2000));
+      continue;
+    }
+    console.log(`  → ${foundUrl}`);
+
+    const { ok, text, error } = await fetchPage(foundUrl);
     if (!ok) {
       console.log(`  ✗ Unreachable: ${error}`);
       for (const name of source.rates) unverified.push(name);
+      await new Promise(r => setTimeout(r, 2000));
       continue;
     }
 
     const topicFound = source.topicKeywords.find(kw => text.toLowerCase().includes(kw.toLowerCase()));
     if (!topicFound) {
-      console.log('  ? Topic keywords not found — page may have been restructured. Marking unverified.');
+      console.log('  ? Topic keywords not found — page may have changed structure. Marking unverified.');
       for (const name of source.rates) unverified.push(name);
+      await new Promise(r => setTimeout(r, 2000));
       continue;
     }
 
@@ -202,11 +249,14 @@ async function run() {
           rate_name:   rateName,
           old_value:   stored.rate_value,
           new_value:   String(extractedVal),
-          source_url:  source.url,
+          source_url:  foundUrl,
           detected_at: timestamp,
         });
       }
     }
+
+    // Delay between sources to avoid rate-limiting
+    await new Promise(r => setTimeout(r, 2000));
   }
 
   // Write changes to DB + send alerts
@@ -226,14 +276,10 @@ async function run() {
 
     const alertMsg = buildChangeAlert(change);
     const subject  = `⚠️ SPAK: Regulatory change — ${change.rate_name}`;
-    await Promise.allSettled([
-      sendWhatsApp(alertMsg),
-      sendEmail(subject, alertMsg),
-    ]);
+    await Promise.allSettled([sendWhatsApp(alertMsg), sendEmail(subject, alertMsg)]);
     console.log(`  Alert sent — action_id: ${change.action_id}`);
   }
 
-  // Overall status
   const status  = changes.length > 0 ? 'warning' : 'success';
   const summary = changes.length === 0 && unverified.length === 0
     ? `All ${verified.length} rates verified ✅`

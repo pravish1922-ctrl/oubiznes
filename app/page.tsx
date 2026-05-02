@@ -408,6 +408,15 @@ export default function Home() {
                 );
               })}
             </div>
+            <Link href="/feedback" style={{
+              display: "block", marginTop: 10, textAlign: "center",
+              fontSize: 11, color: "#9ca3af", textDecoration: "none",
+            }}
+              onMouseOver={e => (e.currentTarget.style.color = PRIMARY)}
+              onMouseOut={e => (e.currentTarget.style.color = "#9ca3af")}
+            >
+              Share your ideas →
+            </Link>
           </div>
         </main>
 

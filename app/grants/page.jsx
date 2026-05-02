@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Home, ExternalLink, RotateCcw, ChevronRight, ChevronDown, FileText } from "lucide-react";
 import EmailCapture from "@/components/EmailCapture";
@@ -570,6 +570,14 @@ export default function GrantsFinder() {
   const [answers, setAnswers] = useState({});
   const [results, setResults] = useState(null);
   const [expandedDocs, setExpandedDocs] = useState(new Set());
+  const [lastVerified, setLastVerified] = useState(null);
+
+  useEffect(() => {
+    fetch("/api/regulatory-status")
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.lastVerified) setLastVerified(data.lastVerified); })
+      .catch(() => {});
+  }, []);
 
   function toggleDocs(id) {
     setExpandedDocs(prev => {
@@ -680,7 +688,11 @@ export default function GrantsFinder() {
 
             {/* Disclaimer — must appear before results */}
             <div style={{ background: "#FEF9C3", border: "1px solid #FCD34D", borderRadius: 10, padding: "12px 16px", marginBottom: 16, fontSize: 13, color: "#78350f", lineHeight: 1.6 }}>
-              ⚠️ <strong>Grant information last verified May 2026.</strong> Scheme terms, amounts, and eligibility conditions can change without notice. Always confirm directly with the issuing body before applying or incurring expenses.
+              ⚠️ <strong>Grant information last verified {lastVerified
+                ? new Date(lastVerified).toLocaleDateString('en-MU', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Indian/Mauritius' })
+                : 'periodically'
+              }.</strong>{" "}
+              Scheme terms, amounts, and eligibility conditions can change without notice. Always confirm directly with the issuing body before applying or incurring expenses.
             </div>
 
             {answers.registered !== "yes" && (
