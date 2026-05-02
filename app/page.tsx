@@ -160,6 +160,7 @@ export default function Home() {
           grid-template-rows: auto;
           gap: 0;
           background: transparent;
+          flex: 1;
         }
         .email-strip {
           display: flex;
