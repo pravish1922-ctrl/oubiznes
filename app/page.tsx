@@ -145,7 +145,7 @@ export default function Home() {
     }
   }
 
-  const quadrant: React.CSSProperties = { background: CREAM, padding: "16px 28px", overflow: "auto" };
+  const quadrant: React.CSSProperties = { background: CREAM, padding: "16px 28px", overflow: "auto", alignContent: "start" };
   const hairline = "1px solid #ede8df";
   const q = (col: 1 | 2, row: 1 | 2): React.CSSProperties => ({
     ...quadrant,
@@ -162,7 +162,9 @@ export default function Home() {
           grid-template-rows: 1fr 1fr;
           gap: 0;
           background: transparent;
-          flex: 1;
+          height: calc(100vh - 192px);
+          min-height: 0;
+          overflow: hidden;
         }
         .email-strip {
           display: flex;
@@ -174,6 +176,8 @@ export default function Home() {
           .home-grid {
             grid-template-columns: 1fr !important;
             grid-template-rows: auto !important;
+            height: auto !important;
+            overflow: visible !important;
           }
           .email-strip {
             flex-direction: column;
