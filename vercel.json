@@ -3,6 +3,10 @@
     {
       "path": "/api/spak/briefing",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/spak/email-reply",
+      "schedule": "*/30 * * * *"
     }
   ]
 }

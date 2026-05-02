@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { Home, CheckCircle2, ExternalLink, RotateCcw, ChevronRight } from "lucide-react";
+import { Home, ExternalLink, RotateCcw, ChevronRight, ChevronDown, FileText } from "lucide-react";
 import EmailCapture from "@/components/EmailCapture";
 
 const NAVY = "#0A1628";
@@ -9,6 +9,16 @@ const CORAL = "#0D9488";
 const GOLD = "#F4C430";
 const GREEN = "#0F7B3F";
 const BLUE = "#1E5AA0";
+
+// Standard docs shared by most SME Mauritius grant schemes
+const SME_DOCS = [
+  "BRN Certificate (from CBRD)",
+  "NID copy — business owner",
+  "Last 3 months bank statements",
+  "Tax Compliance Certificate (from MRA)",
+  "2 supplier quotations for the funded item",
+  "Brief project description / business case",
+];
 
 const SCHEMES = [
   {
@@ -25,6 +35,7 @@ const SCHEMES = [
     desc: "Funds websites, ERP, POS, automation, green tech, productive equipment.",
     url: "https://www.smemu.com/schemes/",
     tags: ["Technology", "Equipment", "Digital"],
+    docs: SME_DOCS,
   },
   {
     id: "icds",
@@ -40,6 +51,14 @@ const SCHEMES = [
     desc: "Funds consultancy, process redesign, quality systems, training programmes.",
     url: "https://www.smemu.com/schemes/",
     tags: ["Consultancy", "Capability", "Training"],
+    docs: [
+      "BRN Certificate (from CBRD)",
+      "NID copy — business owner",
+      "Last 3 months bank statements",
+      "Tax Compliance Certificate (from MRA)",
+      "2 quotations from consultancy firm",
+      "Scope of work / training plan",
+    ],
   },
   {
     id: "bts",
@@ -55,6 +74,7 @@ const SCHEMES = [
     desc: "Strategic redesign: business model review, governance, risk, marketing strategy.",
     url: "https://www.smemu.com/schemes/",
     tags: ["Strategy", "Transformation"],
+    docs: SME_DOCS,
   },
   {
     id: "marketing",
@@ -70,6 +90,14 @@ const SCHEMES = [
     desc: "Brand identity, packaging, digital campaigns, export-ready marketing materials.",
     url: "https://www.smemu.com/schemes/",
     tags: ["Marketing", "Branding"],
+    docs: [
+      "BRN Certificate (from CBRD)",
+      "NID copy — business owner",
+      "Last 3 months bank statements",
+      "Tax Compliance Certificate (from MRA)",
+      "2 quotations from marketing / design agency",
+      "Marketing brief or campaign description",
+    ],
   },
   {
     id: "green",
@@ -85,6 +113,14 @@ const SCHEMES = [
     desc: "Energy efficiency upgrades, ISO 14001 certification, waste reduction systems.",
     url: "https://www.smemu.com/schemes/",
     tags: ["Green", "Sustainability"],
+    docs: [
+      "BRN Certificate (from CBRD)",
+      "NID copy — business owner",
+      "Last 3 months bank statements",
+      "Tax Compliance Certificate (from MRA)",
+      "2 quotations for green equipment / audit",
+      "Energy or sustainability assessment",
+    ],
   },
   {
     id: "madeinmoris",
@@ -100,6 +136,14 @@ const SCHEMES = [
     desc: "Certify your product under the Made in Moris label — trust signal for local and export buyers.",
     url: "https://www.madeinmoris.com/",
     tags: ["Certification", "Export", "Manufacturing"],
+    docs: [
+      "BRN Certificate (from CBRD)",
+      "NID copy — business owner",
+      "Tax Compliance Certificate (from MRA)",
+      "Product samples or product images",
+      "Manufacturing process description",
+      "Proof of local content / origin",
+    ],
   },
   {
     id: "gs1",
@@ -115,6 +159,12 @@ const SCHEMES = [
     desc: "SME Mauritius covers 100% of GS1 barcode registration — essential for supermarkets and export.",
     url: "https://www.smemu.com/schemes/",
     tags: ["Barcode", "Retail", "Export"],
+    docs: [
+      "BRN Certificate (from CBRD)",
+      "NID copy — business owner",
+      "Tax Compliance Certificate (from MRA)",
+      "List of products requiring barcodes",
+    ],
   },
   {
     id: "shetrades",
@@ -131,6 +181,12 @@ const SCHEMES = [
     desc: "Dedicated programme for women-led businesses. Export support, buyer networks, DHL Go Trade.",
     url: "https://shetrades.edbmauritius.org/",
     tags: ["Women", "Export", "Network"],
+    docs: [
+      "BRN Certificate (from CBRD)",
+      "NID copy — confirming woman ownership or management",
+      "Business profile (1–2 pages)",
+      "Export plan or intent statement",
+    ],
   },
   {
     id: "crigs",
@@ -146,6 +202,16 @@ const SCHEMES = [
     desc: "Up to Rs 5M matching grant for industry-academia R&D projects. Up to 24 months duration.",
     url: "https://mric.govmu.org/",
     tags: ["R&D", "Innovation", "Research"],
+    docs: [
+      "BRN Certificate (from CBRD)",
+      "NID copy — principal investigator / business owner",
+      "Research proposal with objectives and methodology",
+      "Academic or industry partner agreement",
+      "Detailed project budget",
+      "Team CVs (research leads)",
+      "Last 3 months bank statements",
+      "Tax Compliance Certificate (from MRA)",
+    ],
   },
   {
     id: "ipps",
@@ -161,6 +227,13 @@ const SCHEMES = [
     desc: "50% refund on patent filing and industrial design registration fees.",
     url: "https://mric.govmu.org/",
     tags: ["Patent", "IP", "Innovation"],
+    docs: [
+      "BRN Certificate (from CBRD)",
+      "NID copy — inventor / business owner",
+      "Patent or design filing application",
+      "Invention / design description",
+      "Official filing fee receipts",
+    ],
   },
   {
     id: "ai-tax",
@@ -176,6 +249,12 @@ const SCHEMES = [
     desc: "Full tax deduction on AI software, training, integration and licensing costs.",
     url: "https://www.mra.mu/",
     tags: ["AI", "Tax", "Technology"],
+    docs: [
+      "BRN Certificate (from CBRD)",
+      "NID copy — business owner",
+      "Invoices for qualifying AI expenditure",
+      "Annual tax return (filed with MRA)",
+    ],
   },
   {
     id: "mitci",
@@ -191,6 +270,13 @@ const SCHEMES = [
     desc: "National AI programme: mentorship, procurement access, AI compute credits for startups.",
     url: "https://mitci.govmu.org/",
     tags: ["AI", "Startup", "Tech"],
+    docs: [
+      "BRN Certificate (from CBRD)",
+      "NID copy — founder(s)",
+      "AI project proposal or product demo",
+      "Team profile and CVs",
+      "Business plan (summary is sufficient)",
+    ],
   },
   {
     id: "dbm",
@@ -206,6 +292,15 @@ const SCHEMES = [
     desc: "Concessional lending for SMEs at better rates than commercial banks. Business plan required.",
     url: "https://www.dbm.mu/",
     tags: ["Loan", "Finance", "Working capital"],
+    docs: [
+      "BRN Certificate (from CBRD)",
+      "NID copy — directors / guarantors",
+      "Detailed business plan",
+      "Financial statements (last 2 years, if available)",
+      "Last 6 months bank statements",
+      "Tax Compliance Certificate (from MRA)",
+      "Collateral documents (if applicable)",
+    ],
   },
   {
     id: "mcci",
@@ -221,6 +316,14 @@ const SCHEMES = [
     desc: "Matches SMEs with larger corporates for supply-chain integration and investment.",
     url: "https://www.mcci.org/",
     tags: ["Investment", "Network", "Growth"],
+    docs: [
+      "BRN Certificate (from CBRD)",
+      "NID copy — business owner",
+      "Business profile (2–3 pages)",
+      "Partnership proposal or integration plan",
+      "Latest financial statements",
+      "Tax Compliance Certificate (from MRA)",
+    ],
   },
   {
     id: "tradefair",
@@ -236,6 +339,13 @@ const SCHEMES = [
     desc: "Subsidy to attend international trade fairs in your sector.",
     url: "https://www.edbmauritius.org/",
     tags: ["Export", "Trade", "International"],
+    docs: [
+      "BRN Certificate (from CBRD)",
+      "NID copy — business owner",
+      "Trade fair registration confirmation",
+      "Business export profile",
+      "Tax Compliance Certificate (from MRA)",
+    ],
   },
   {
     id: "warehouse",
@@ -252,6 +362,15 @@ const SCHEMES = [
     desc: "EDB covers 60% of your first 200m² warehouse in selected African countries for 3 years.",
     url: "https://www.edbmauritius.org/",
     tags: ["Export", "Africa", "Warehouse"],
+    docs: [
+      "BRN Certificate (from CBRD)",
+      "NID copy — business owner",
+      "Export licence (if applicable)",
+      "Signed warehouse lease agreement in target country",
+      "Business plan for African market",
+      "Last 6 months bank statements",
+      "Tax Compliance Certificate (from MRA)",
+    ],
   },
   {
     id: "young-entrepreneur",
@@ -268,6 +387,13 @@ const SCHEMES = [
     desc: "Full grant (not 80%) up to Rs 50,000 for entrepreneurs under 29 on non-ICT equipment.",
     url: "https://www.smemu.com/schemes/",
     tags: ["Youth", "Equipment", "Bonus"],
+    docs: [
+      "BRN Certificate (from CBRD)",
+      "NID copy — confirming age under 29",
+      "Last 3 months bank statements",
+      "Tax Compliance Certificate (from MRA)",
+      "2 quotations for non-ICT equipment",
+    ],
   },
   {
     id: "edb-investment",
@@ -283,6 +409,15 @@ const SCHEMES = [
     desc: "Tax holidays, duty exemptions, and investment support for priority sectors.",
     url: "https://www.edbmauritius.org/",
     tags: ["Investment", "Tax holiday", "Priority sector"],
+    docs: [
+      "BRN Certificate (from CBRD)",
+      "NID copy — directors",
+      "Investment proposal with sector focus",
+      "5-year financial projections",
+      "Detailed business plan",
+      "Last 6 months bank statements",
+      "Tax Compliance Certificate (from MRA)",
+    ],
   },
   {
     id: "ndf",
@@ -298,6 +433,14 @@ const SCHEMES = [
     desc: "Discretionary grants for projects with strong social or economic impact.",
     url: "https://mof.govmu.org/",
     tags: ["Social impact", "National interest"],
+    docs: [
+      "BRN Certificate (from CBRD)",
+      "NID copy — business owner",
+      "Project proposal with social / economic impact analysis",
+      "Detailed budget breakdown",
+      "Last 3 months bank statements",
+      "Tax Compliance Certificate (from MRA)",
+    ],
   },
   {
     id: "sme-smart",
@@ -313,6 +456,14 @@ const SCHEMES = [
     desc: "Accelerated digital adoption grant under Smart Mauritius initiative for micro and small SMEs.",
     url: "https://www.smemu.com/schemes/",
     tags: ["Digital", "Smart Mauritius", "Small SME"],
+    docs: [
+      "BRN Certificate (from CBRD)",
+      "NID copy — business owner",
+      "Last 3 months bank statements",
+      "Tax Compliance Certificate (from MRA)",
+      "2 quotations for digital tools / software",
+      "Brief digital transformation plan",
+    ],
   },
 ];
 
@@ -418,6 +569,15 @@ export default function GrantsFinder() {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState({});
   const [results, setResults] = useState(null);
+  const [expandedDocs, setExpandedDocs] = useState(new Set());
+
+  function toggleDocs(id) {
+    setExpandedDocs(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
 
   function handleAnswer(key, value) {
     const newAnswers = { ...answers, [key]: value };
@@ -436,6 +596,7 @@ export default function GrantsFinder() {
     setStep(0);
     setAnswers({});
     setResults(null);
+    setExpandedDocs(new Set());
   }
 
   return (
@@ -452,11 +613,11 @@ export default function GrantsFinder() {
       <header className="border-b border-gray-200 bg-white print:hidden">
         <div style={{ maxWidth: 720, margin: "0 auto", padding: "12px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <Link href="/" style={{ textDecoration: "none", color: "inherit" }}>
-          <div>
-            <span style={{ fontWeight: 800, fontSize: 18, color: CORAL }}>OuBiznes</span>
-            <span style={{ fontWeight: 800, fontSize: 18, color: NAVY }}>.mu</span>
-            <span style={{ marginLeft: 10, fontSize: 14, color: "#6b7280" }}>Grants Finder</span>
-          </div>
+            <div>
+              <span style={{ fontWeight: 800, fontSize: 18, color: CORAL }}>OuBiznes</span>
+              <span style={{ fontWeight: 800, fontSize: 18, color: NAVY }}>.mu</span>
+              <span style={{ marginLeft: 10, fontSize: 14, color: "#6b7280" }}>Grants Finder</span>
+            </div>
           </Link>
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={reset} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 13, color: "#6b7280", background: "none", border: "none", cursor: "pointer" }}>
@@ -516,26 +677,25 @@ export default function GrantsFinder() {
             <h1 style={{ fontSize: 26, fontWeight: 800, color: NAVY, marginBottom: 4 }}>
               {results.length} scheme{results.length !== 1 ? "s" : ""} match your profile
             </h1>
-            <p style={{ fontSize: 15, color: "#6b7280", marginBottom: 28 }}>
-              Ranked by fit. Always verify eligibility with the agency before applying.
-            </p>
-            
+
+            {/* Disclaimer — must appear before results */}
+            <div style={{ background: "#FEF9C3", border: "1px solid #FCD34D", borderRadius: 10, padding: "12px 16px", marginBottom: 16, fontSize: 13, color: "#78350f", lineHeight: 1.6 }}>
+              ⚠️ <strong>Grant information last verified May 2026.</strong> Scheme terms, amounts, and eligibility conditions can change without notice. Always confirm directly with the issuing body before applying or incurring expenses.
+            </div>
+
             {answers.registered !== "yes" && (
-              <div style={{ background: "#FFF8F0", border: "1px solid #fde8d8", borderRadius: 10, padding: "12px 16px", marginBottom: 8, display: "flex", gap: 10 }}>
+              <div style={{ background: "#FFF8F0", border: "1px solid #fde8d8", borderRadius: 10, padding: "12px 16px", marginBottom: 12, display: "flex", gap: 10 }}>
                 <span style={{ fontSize: 16 }}>💡</span>
                 <p style={{ fontSize: 13, color: "#92400e", margin: 0, lineHeight: 1.6 }}>
-                  <strong>Not yet registered?</strong> Grants ranked below require a BRN. <a href="https://companies.govmu.org" target="_blank" rel="noopener noreferrer" style={{ color: "#92400e", textDecoration: "underline" }}>Register your business first →</a>
+                  <strong>Not yet registered?</strong> Most grants below require a BRN.{" "}
+                  <a href="https://companies.govmu.org" target="_blank" rel="noopener noreferrer" style={{ color: "#92400e", textDecoration: "underline" }}>Register your business first →</a>
                 </p>
               </div>
             )}
-            
-            <div style={{ background: "#f0f9ff", border: "1px solid #bae6fd", borderRadius: 10, padding: "12px 16px", marginBottom: 16, fontSize: 13, color: "#0369a1" }}>
-              ℹ️ This tool covers 20 real Mauritian schemes. Data verified April 2026. Always confirm eligibility directly with the agency before applying — scheme terms can change.
-            </div>
 
             <EmailCapture source="/grants" message="Get alerts when new grants or schemes launch in Mauritius." />
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 20 }}>
               {results.map((scheme, idx) => (
                 <div key={scheme.id} style={{
                   background: "#fff",
@@ -553,33 +713,74 @@ export default function GrantsFinder() {
                       {idx === 0 ? "🥇 Best match" : idx === 1 ? "🥈 Strong match" : "🥉 Good match"}
                     </div>
                   )}
-                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
-                    <div style={{ flex: 1 }}>
-                      <h3 style={{ fontSize: 16, fontWeight: 700, color: NAVY, marginBottom: 2 }}>{scheme.name}</h3>
-                      <p style={{ fontSize: 13, color: "#6b7280", marginBottom: 8 }}>{scheme.agency}</p>
-                      <p style={{ fontSize: 14, color: "#374151", marginBottom: 10 }}>{scheme.desc}</p>
-                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        <span style={{ background: "#f3f4f6", color: NAVY, fontSize: 12, fontWeight: 600, padding: "3px 10px", borderRadius: 20 }}>
-                          {scheme.amount}
-                        </span>
-                        <span style={{ background: "#fef2f2", color: CORAL, fontSize: 12, fontWeight: 600, padding: "3px 10px", borderRadius: 20 }}>
-                          {scheme.type}
-                        </span>
-                      </div>
-                    </div>
+
+                  <h3 style={{ fontSize: 16, fontWeight: 700, color: NAVY, marginBottom: 2 }}>{scheme.name}</h3>
+                  <p style={{ fontSize: 13, color: "#6b7280", marginBottom: 8 }}>{scheme.agency}</p>
+                  <p style={{ fontSize: 14, color: "#374151", marginBottom: 10 }}>{scheme.desc}</p>
+
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
+                    <span style={{ background: "#f3f4f6", color: NAVY, fontSize: 12, fontWeight: 600, padding: "3px 10px", borderRadius: 20 }}>
+                      {scheme.amount}
+                    </span>
+                    <span style={{ background: "#fef2f2", color: CORAL, fontSize: 12, fontWeight: 600, padding: "3px 10px", borderRadius: 20 }}>
+                      {scheme.type}
+                    </span>
+                    {scheme.coverage && (
+                      <span style={{ background: "#f0fdf4", color: GREEN, fontSize: 12, fontWeight: 600, padding: "3px 10px", borderRadius: 20 }}>
+                        {scheme.coverage}
+                      </span>
+                    )}
                   </div>
+
+                  {/* Document checklist toggle */}
+                  {scheme.docs && scheme.docs.length > 0 && (
+                    <div style={{ marginBottom: 14 }}>
+                      <button
+                        onClick={() => toggleDocs(scheme.id)}
+                        style={{
+                          display: "flex", alignItems: "center", gap: 6,
+                          fontSize: 13, fontWeight: 600, color: BLUE,
+                          background: "#eff6ff", border: "1px solid #bfdbfe",
+                          borderRadius: 8, padding: "6px 12px", cursor: "pointer",
+                        }}
+                      >
+                        <FileText size={13} />
+                        Documents required
+                        {expandedDocs.has(scheme.id)
+                          ? <ChevronDown size={13} />
+                          : <ChevronRight size={13} />}
+                      </button>
+
+                      {expandedDocs.has(scheme.id) && (
+                        <ul style={{ margin: "10px 0 0 0", padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 5 }}>
+                          {scheme.docs.map((doc, di) => (
+                            <li key={di} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 13, color: "#374151" }}>
+                              <span style={{ color: GREEN, fontSize: 12, marginTop: 2, flexShrink: 0 }}>✓</span>
+                              {doc}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Official Source button */}
                   <a
                     href={scheme.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 14, fontSize: 13, color: CORAL, fontWeight: 600, textDecoration: "underline" }}
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: 6,
+                      fontSize: 13, fontWeight: 600, color: "#fff",
+                      background: CORAL, borderRadius: 8,
+                      padding: "8px 14px", textDecoration: "none",
+                    }}
                   >
-                    Apply on {scheme.agency} website <ExternalLink size={13} />
+                    Official Source <ExternalLink size={13} />
                   </a>
                 </div>
               ))}
             </div>
-
           </>
         )}
       </div>

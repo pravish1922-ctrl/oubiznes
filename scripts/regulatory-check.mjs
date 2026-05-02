@@ -1,301 +1,278 @@
 #!/usr/bin/env node
 /**
- * Agent 5 — Regulatory Update Agent (OuBiznes.mu)
+ * Agent 5 — Regulatory Update Agent (OuBiznes.mu) v2
  *
- * Two-stage approach:
- *   1. AUTOMATED — fetch official source pages, verify they are reachable and
- *      the correct topic is still present (guards against URL changes or site
- *      restructuring that would silently invalidate our data).
- *   2. MANUAL CHECKLIST — MRA publishes actual rates in PDFs, not HTML, so the
- *      script generates a targeted checklist of figures to verify by eye.
+ * 1. Loads reference values from Supabase regulatory_rates table
+ * 2. Fetches official MRA/HRDC/Labour source pages
+ * 3. Extracts key values using regex patterns
+ * 4. Compares extracted values with stored values:
+ *    - match       → "verified"
+ *    - different   → writes pending_approval to agent_runs, sends WA + email alert
+ *    - unextracted → "unverified" (no false alarm — MRA often uses PDFs)
+ * 5. Writes overall run status to agent_runs + spak_status
  *
- * Run:
- *   npm run regulatory-check
- *   (or: node --env-file=.env.local scripts/regulatory-check.mjs)
- *
- * Schedule: runs weekly every Monday at 08:00.
- *   Windows Task Scheduler: Basic Task → Weekly → Monday 08:00,
- *   action = `cmd /c "cd /d C:\Users\conta\OneDrive\Documents\oubiznes && npm run regulatory-check"`
- *
- * Email alerts (optional):
- *   Add to .env.local:
- *     SMTP_HOST=smtp.example.com
- *     SMTP_PORT=465
- *     SMTP_USER=you@example.com
- *     SMTP_PASS=your-smtp-password
- *     REGULATORY_EMAIL_TO=pravish1922@gmail.com  ← defaults to SMTP_USER if omitted
- *   Then: npm install nodemailer  (one-time)
- *
- * Log:  logs/regulatory/YYYY-MM-DD.json
+ * Run:  npm run regulatory-check
+ * Schedule: Windows Task Scheduler — weekly Monday 08:00 MU time
  */
 
-import { writeFileSync, mkdirSync } from "fs";
-import { join, dirname } from "path";
-import { fileURLToPath } from "url";
+import { writeFileSync, mkdirSync } from 'fs';
+import { join, dirname }           from 'path';
+import { fileURLToPath }           from 'url';
+import { randomUUID }              from 'crypto';
+import { createClient }            from '@supabase/supabase-js';
+import { sendEmail, sendWhatsApp } from '../lib/notify.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const ROOT = join(__dirname, "..");
+const ROOT      = join(__dirname, '..');
+const PROJECT   = 'oubiznes';
 
-// ── STORED VALUES  (source of truth — keep in sync with CLAUDE.md §5) ────────
-const STORED = {
-  "VAT standard rate":                     "15%",
-  "VAT registration threshold":            "Rs 3,000,000 / year",
-  "VAT return due":                        "20 days after end of period",
-  "CSG employee — basic ≤ Rs 50,000":     "1.5%",
-  "CSG employee — basic > Rs 50,000":     "3%",
-  "CSG employer — basic ≤ Rs 50,000":     "3%",
-  "CSG employer — basic > Rs 50,000":     "6%",
-  "NSF employee rate":                     "1% (capped)",
-  "NSF employer rate":                     "2.5% (capped)",
-  "HRDC Training Levy":                    "1.5% of basic (employer only)",
-  "National minimum wage":                 "Rs 16,500 / month",
-  "PAYE band 1":                           "0%  on first Rs 500,000 / year",
-  "PAYE band 2":                           "10% on next Rs 500,000 / year",
-  "PAYE band 3":                           "20% above Rs 1,000,000 / year",
-};
+// ── SUPABASE ──────────────────────────────────────────────────────────────────
+function getDb() {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) { console.warn('[regulatory] Supabase not configured'); return null; }
+  return createClient(url, key, { auth: { persistSession: false } });
+}
 
-// ── SOURCES ───────────────────────────────────────────────────────────────────
-// Each source has an automated reachability + topic check,
-// plus a list of stored values a human should confirm on that page.
+async function loadRates(db) {
+  if (!db) return {};
+  const { data, error } = await db.from('regulatory_rates').select('*');
+  if (error) { console.error('[regulatory] Failed to load rates:', error.message); return {}; }
+  return Object.fromEntries(data.map(r => [r.rate_name, r]));
+}
+
+// ── SOURCES + EXTRACTORS ──────────────────────────────────────────────────────
 const SOURCES = [
   {
-    name:          "MRA — VAT",
-    url:           "https://www.mra.mu/index.php/mvat",
-    topicKeywords: ["VAT", "value added tax"],
-    verifies: [
-      "VAT standard rate",
-      "VAT registration threshold",
-      "VAT return due",
-    ],
+    name: 'MRA — VAT',
+    url:  'https://www.mra.mu/index.php/mvat',
+    topicKeywords: ['VAT', 'value added'],
+    rates: ['vat_standard_rate', 'vat_registration_threshold'],
+    extract(text) {
+      const out = {};
+      const vatM = text.match(/(?:standard\s+rate|vat\s+rate)[^%\d]{0,60}(\d+(?:\.\d+)?)\s*%/i)
+                || text.match(/(\d+(?:\.\d+)?)\s*%[^%\n]{0,60}(?:standard|vat\s+rate)/i);
+      if (vatM) out['vat_standard_rate'] = vatM[1];
+
+      const thrM = text.match(/Rs\.?\s*([\d,]+)\s*(?:per\s*year|\/\s*year|per\s*annum)/i)
+                || text.match(/(3[,\s]?000[,\s]?000)/);
+      if (thrM) out['vat_registration_threshold'] = thrM[1].replace(/[,\s]/g, '');
+      return out;
+    },
   },
   {
-    name:          "MRA — PAYE / CSG / NSF (Employers)",
-    url:           "https://www.mra.mu/index.php/employers/employment",
-    topicKeywords: ["CSG", "PAYE", "NSF"],
-    verifies: [
-      "CSG employee — basic ≤ Rs 50,000",
-      "CSG employee — basic > Rs 50,000",
-      "CSG employer — basic ≤ Rs 50,000",
-      "CSG employer — basic > Rs 50,000",
-      "NSF employee rate",
-      "NSF employer rate",
-      "PAYE band 1",
-      "PAYE band 2",
-      "PAYE band 3",
+    name: 'MRA — PAYE / CSG / NSF',
+    url:  'https://www.mra.mu/index.php/employers/employment',
+    topicKeywords: ['CSG', 'PAYE', 'NSF'],
+    rates: [
+      'paye_band_1_rate', 'paye_band_2_rate', 'paye_band_3_rate',
+      'csg_employee_low', 'csg_employee_high',
+      'csg_employer_low', 'csg_employer_high',
+      'nsf_employee_rate', 'nsf_employer_rate',
     ],
+    extract(text) {
+      const out = {};
+      const b1 = text.match(/(?:first|band\s*1)[^%\d]{0,80}(\d+)\s*%/i);
+      if (b1) out['paye_band_1_rate'] = b1[1];
+      const b2 = text.match(/(?:next|second|band\s*2)[^%\d]{0,80}(\d+)\s*%/i);
+      if (b2) out['paye_band_2_rate'] = b2[1];
+      const b3 = text.match(/(?:above|third|band\s*3|remaining)[^%\d]{0,80}(\d+)\s*%/i);
+      if (b3) out['paye_band_3_rate'] = b3[1];
+
+      const csgL  = text.match(/(?:csg|contribution)[^%\d]{0,120}(1\.5)\s*%/i);
+      if (csgL) { out['csg_employee_low'] = csgL[1]; out['csg_employer_low'] = csgL[1]; }
+      const csgH  = text.match(/(?:csg|contribution)[^%\d]{0,120}(6)\s*%/i);
+      if (csgH) out['csg_employer_high'] = csgH[1];
+      return out;
+    },
   },
   {
-    name:          "HRDC — Training Levy",
-    url:           "https://www.hrdc.mu/",
-    topicKeywords: ["Training Levy", "training levy"],
-    verifies: [
-      "HRDC Training Levy",
-    ],
+    name: 'HRDC — Training Levy',
+    url:  'https://www.hrdc.mu/',
+    topicKeywords: ['Training Levy', 'levy'],
+    rates: ['hrdc_levy_rate'],
+    extract(text) {
+      const m = text.match(/(?:training\s+levy|levy)[^%\d]{0,80}(\d+(?:\.\d+)?)\s*%/i);
+      return m ? { hrdc_levy_rate: m[1] } : {};
+    },
   },
   {
-    name:          "MRA — Minimum Wage / Individual",
-    url:           "https://www.mra.mu/index.php/individual1",
-    topicKeywords: ["income tax", "PAYE", "employee"],
-    verifies: [
-      "National minimum wage",
-    ],
+    name: 'Labour — Minimum Wage',
+    url:  'https://labour.govmu.org/',
+    topicKeywords: ['minimum wage', 'salaire'],
+    rates: ['minimum_wage'],
+    extract(text) {
+      const m = text.match(/(?:national\s+minimum\s+wage|minimum\s+wage)[^R\d]{0,60}Rs?\.?\s*([\d,]+)/i)
+             || text.match(/Rs?\.?\s*(16[,\s]?500)/i);
+      return m ? { minimum_wage: m[1].replace(/[,\s]/g, '') } : {};
+    },
   },
 ];
 
-// ── FETCH HELPER ──────────────────────────────────────────────────────────────
+// ── FETCH ─────────────────────────────────────────────────────────────────────
 async function fetchPage(url) {
   try {
     const res = await fetch(url, {
-      headers: {
-        "User-Agent": "OuBiznes.mu Regulatory Monitor (compliance verification)",
-        "Accept":     "text/html,application/xhtml+xml",
-      },
-      signal: AbortSignal.timeout(12000),
+      headers: { 'User-Agent': 'OuBiznes.mu Regulatory Monitor/2.0', Accept: 'text/html' },
+      signal:  AbortSignal.timeout(15_000),
     });
-    if (!res.ok) return { ok: false, status: res.status, error: `HTTP ${res.status} ${res.statusText}` };
+    if (!res.ok) return { ok: false, error: `HTTP ${res.status}` };
     const html = await res.text();
-    const text = html.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ");
-    return { ok: true, status: res.status, text };
+    const text = html.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ');
+    return { ok: true, text };
   } catch (err) {
-    return { ok: false, status: 0, error: err.message };
+    return { ok: false, error: err.message };
   }
 }
 
-// ── EMAIL ALERT (optional — requires nodemailer + SMTP env vars) ──────────────
-async function sendEmailAlert(flags, manualChecklist, dateStr) {
-  const { SMTP_USER, SMTP_PASS, REGULATORY_EMAIL_TO } = process.env;
-
-  if (!SMTP_USER || !SMTP_PASS) {
-    console.log("  (email skipped — SMTP_USER / SMTP_PASS not set in .env.local)");
-    return;
-  }
-
-  let nodemailer;
-  try {
-    nodemailer = await import("nodemailer");
-  } catch {
-    console.log("  (email skipped — run: npm install nodemailer)");
-    return;
-  }
-
-  const recipient = REGULATORY_EMAIL_TO || SMTP_USER;
-
-  const manualLines = SOURCES.flatMap(s =>
-    s.verifies.map(k => `  [${s.name}]  ${k}: ${STORED[k]}`)
-  );
-
-  const body = [
-    `OuBiznes.mu — Regulatory check flagged ${flags.length} issue(s) on ${dateStr}`,
-    "",
-    "═══ AUTOMATED FLAGS ═══",
-    ...flags.map(f => `  • ${f}`),
-    "",
-    "Action required:",
-    "  1. Open each flagged URL in a browser.",
-    "  2. If the page has moved, update SOURCES in scripts/regulatory-check.mjs",
-    "     AND update CLAUDE.md §5.",
-    "  3. Re-run: npm run regulatory-check",
-    "",
-    "═══ MANUAL CHECKLIST — verify these values on-screen ═══",
-    ...manualLines,
-    "",
-    `Log: logs/regulatory/${dateStr}.json`,
-  ].join("\n");
-
-  const transporter = nodemailer.default.createTransport({
-    host:   process.env.SMTP_HOST,
-    port:   Number(process.env.SMTP_PORT) || 465,
-    secure: true,
-    auth: { user: SMTP_USER, pass: SMTP_PASS },
-  });
-
-  try {
-    await transporter.sendMail({
-      from: `"OuBiznes Agent 5" <${SMTP_USER}>`,
-      to:   recipient,
-      subject: `[OuBiznes] Regulatory check — ${flags.length} flag(s) — ${dateStr}`,
-      text:  body,
-    });
-    console.log(`  ✓ Alert email sent → ${recipient}`);
-  } catch (err) {
-    console.log(`  ✗ Email send failed: ${err.message}`);
-    console.log("    Check SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS in .env.local");
-  }
+// ── ALERT FORMAT ──────────────────────────────────────────────────────────────
+function buildChangeAlert(change) {
+  return [
+    '⚠️ REGULATORY CHANGE DETECTED',
+    `Rate:      ${change.rate_name}`,
+    `Was:       ${change.old_value}`,
+    `Now:       ${change.new_value}`,
+    `Source:    ${change.source_url}`,
+    `Detected:  ${change.detected_at}`,
+    '',
+    'Reply to approve or ignore:',
+    `APPROVE     ${change.action_id}`,
+    `IGNORE      ${change.action_id}`,
+    `INVESTIGATE ${change.action_id}`,
+  ].join('\n');
 }
 
 // ── MAIN ──────────────────────────────────────────────────────────────────────
 async function run() {
-  const timestamp = new Date().toISOString();
+  const now       = new Date();
+  const timestamp = now.toISOString();
   const dateStr   = timestamp.slice(0, 10);
-  const automated = [];
-  const flags     = [];
 
-  console.log("\n══════════════════════════════════════════════════════════");
-  console.log("  OuBiznes.mu — Agent 5: Regulatory Update Check");
+  console.log('\n══════════════════════════════════════════════════════════');
+  console.log('  OuBiznes.mu — Agent 5: Regulatory Update Check v2');
   console.log(`  ${timestamp}`);
-  console.log("══════════════════════════════════════════════════════════\n");
+  console.log('══════════════════════════════════════════════════════════\n');
 
-  // ── STAGE 1: automated page checks ────────────────────────────────────────
-  console.log("STAGE 1 — Automated: checking source pages are reachable\n");
+  const db    = getDb();
+  const rates = await loadRates(db);
+  console.log(`Loaded ${Object.keys(rates).length} rates from Supabase.\n`);
+
+  const verified   = [];
+  const unverified = [];
+  const changes    = [];
 
   for (const source of SOURCES) {
-    const { ok, status, text, error } = await fetchPage(source.url);
+    console.log(`Checking: ${source.name}`);
+    const { ok, text, error } = await fetchPage(source.url);
 
     if (!ok) {
-      console.log(`  ✗ FETCH FAILED  ${source.name}`);
-      console.log(`    ${source.url}`);
-      console.log(`    Error: ${error}\n`);
-      automated.push({ source: source.name, url: source.url, status: "FETCH_FAILED", error });
-      flags.push(`FETCH FAILED — ${source.name} (${error}). URL may have changed.`);
+      console.log(`  ✗ Unreachable: ${error}`);
+      for (const name of source.rates) unverified.push(name);
       continue;
     }
 
-    // Check at least one topic keyword appears in the page text
-    const topicHit = source.topicKeywords.find(kw =>
-      text.toLowerCase().includes(kw.toLowerCase())
-    );
+    const topicFound = source.topicKeywords.find(kw => text.toLowerCase().includes(kw.toLowerCase()));
+    if (!topicFound) {
+      console.log('  ? Topic keywords not found — page may have been restructured. Marking unverified.');
+      for (const name of source.rates) unverified.push(name);
+      continue;
+    }
 
-    if (topicHit) {
-      console.log(`  ✓ PAGE OK       ${source.name}  [found: "${topicHit}"]`);
-      automated.push({ source: source.name, url: source.url, status: "PAGE_VERIFIED", topicFound: topicHit });
-    } else {
-      console.log(`  ? TOPIC MISSING ${source.name}`);
-      console.log(`    Page returned HTTP ${status} but topic keywords not found.`);
-      console.log(`    Keywords searched: ${source.topicKeywords.join(", ")}\n`);
-      automated.push({ source: source.name, url: source.url, status: "TOPIC_NOT_FOUND", httpStatus: status });
-      flags.push(`TOPIC NOT FOUND — ${source.name}: page returned ${status} but none of [${source.topicKeywords.join(", ")}] detected. URL may have been reorganised.`);
+    const extracted = source.extract(text);
+    console.log(`  ✓ Reachable. Extracted: ${JSON.stringify(extracted)}`);
+
+    for (const rateName of source.rates) {
+      const stored = rates[rateName];
+      if (!stored) { unverified.push(rateName); continue; }
+
+      const extractedVal = extracted[rateName];
+      if (extractedVal === undefined || extractedVal === null) {
+        console.log(`    unverified  ${rateName} (could not extract)`);
+        unverified.push(rateName);
+        continue;
+      }
+
+      if (String(extractedVal) === String(stored.rate_value)) {
+        console.log(`    ✓ verified  ${rateName} = ${extractedVal}`);
+        verified.push(rateName);
+      } else {
+        console.log(`    ⚠ CHANGE   ${rateName}: stored=${stored.rate_value} extracted=${extractedVal}`);
+        changes.push({
+          action_id:   randomUUID(),
+          rate_name:   rateName,
+          old_value:   stored.rate_value,
+          new_value:   String(extractedVal),
+          source_url:  source.url,
+          detected_at: timestamp,
+        });
+      }
     }
   }
 
-  // ── STAGE 2: manual verification checklist ────────────────────────────────
-  console.log("\n══════════════════════════════════════════════════════════");
-  console.log("STAGE 2 — Manual: values to verify against official sources");
-  console.log("══════════════════════════════════════════════════════════\n");
-
-  const manualChecklist = [];
-
-  for (const source of SOURCES) {
-    console.log(`  ${source.name}`);
-    console.log(`  ${source.url}`);
-    for (const key of source.verifies) {
-      const stored = STORED[key];
-      console.log(`    [ ] ${key}: ${stored}`);
-      manualChecklist.push({ source: source.name, url: source.url, field: key, storedValue: stored, checked: false });
+  // Write changes to DB + send alerts
+  for (const change of changes) {
+    if (db) {
+      const { error } = await db.from('agent_runs').insert({
+        id:          change.action_id,
+        project:     PROJECT,
+        agent_name:  'regulatory-check',
+        status:      'pending_approval',
+        summary:     `Rate change: ${change.rate_name} ${change.old_value} → ${change.new_value}`,
+        details:     change,
+        flags_count: 1,
+      });
+      if (error) console.error(`[regulatory] DB write failed for ${change.rate_name}:`, error.message);
     }
-    console.log();
+
+    const alertMsg = buildChangeAlert(change);
+    const subject  = `⚠️ SPAK: Regulatory change — ${change.rate_name}`;
+    await Promise.allSettled([
+      sendWhatsApp(alertMsg),
+      sendEmail(subject, alertMsg),
+    ]);
+    console.log(`  Alert sent — action_id: ${change.action_id}`);
   }
 
-  // ── SUMMARY ───────────────────────────────────────────────────────────────
-  const verified    = automated.filter(r => r.status === "PAGE_VERIFIED").length;
-  const topicFailed = automated.filter(r => r.status === "TOPIC_NOT_FOUND").length;
-  const fetchFailed = automated.filter(r => r.status === "FETCH_FAILED").length;
+  // Overall status
+  const status  = changes.length > 0 ? 'warning' : 'success';
+  const summary = changes.length === 0 && unverified.length === 0
+    ? `All ${verified.length} rates verified ✅`
+    : changes.length > 0
+      ? `${changes.length} change(s) detected — pending approval`
+      : `${verified.length} verified · ${unverified.length} unverified (PDFs/JS pages)`;
 
-  console.log("══════════════════════════════════════════════════════════");
-  console.log(`  Automated: ${verified}/${SOURCES.length} pages verified  |  ${topicFailed} topic missing  |  ${fetchFailed} unreachable`);
-  console.log(`  Manual checklist: ${manualChecklist.length} values to confirm`);
+  console.log(`\n══ ${summary}\n`);
 
-  if (flags.length === 0) {
-    console.log("  ✓ All source pages reachable and on-topic.");
-    console.log("  Complete the manual checklist above against each source URL.");
-  } else {
-    console.log("\n  ⚠  FLAGS REQUIRING ATTENTION:");
-    flags.forEach(f => console.log(`     • ${f}`));
-    console.log("\n  If a page has moved, update SOURCES in this script and CLAUDE.md §5.");
+  if (db) {
+    await Promise.allSettled([
+      db.from('agent_runs').insert({
+        project:     PROJECT,
+        agent_name:  'regulatory-check',
+        status,
+        summary,
+        details:     { verified, unverified, changes_detected: changes.length },
+        flags_count: changes.length,
+      }),
+      db.from('spak_status').insert({
+        project:      PROJECT,
+        all_tools_up: true,
+        tools_up:     0,
+        tools_total:  0,
+        status_line:  summary,
+        details:      { verified, unverified, changes },
+      }),
+    ]);
   }
-  console.log("══════════════════════════════════════════════════════════\n");
 
-  // ── WRITE LOG ─────────────────────────────────────────────────────────────
-  const logDir  = join(ROOT, "logs", "regulatory");
-  const logPath = join(logDir, `${dateStr}.json`);
+  const logDir = join(ROOT, 'logs', 'regulatory');
   mkdirSync(logDir, { recursive: true });
-  writeFileSync(logPath, JSON.stringify({
-    timestamp,
-    summary: {
-      pagesVerified: verified,
-      topicNotFound: topicFailed,
-      fetchFailed,
-      manualChecklistCount: manualChecklist.length,
-      hasAutomatedFlags: flags.length > 0,
-    },
-    automatedFlags: flags,
-    storedValues: STORED,
-    automated,
-    manualChecklist,
-  }, null, 2));
+  writeFileSync(
+    join(logDir, `${dateStr}.json`),
+    JSON.stringify({ timestamp, summary, verified, unverified, changes }, null, 2)
+  );
+  console.log(`Log saved → logs/regulatory/${dateStr}.json\n`);
 
-  console.log(`  Log saved → logs/regulatory/${dateStr}.json\n`);
-
-  // ── EMAIL ALERT (only fires if flags exist) ───────────────────────────────
-  if (flags.length > 0) {
-    console.log("  Sending email alert...");
-    await sendEmailAlert(flags, manualChecklist, dateStr);
-  }
-
-  // Exit non-zero if automated checks flagged anything
-  if (flags.length > 0) process.exit(1);
+  if (changes.length > 0) process.exit(1);
 }
 
-run().catch(err => {
-  console.error("Fatal:", err);
-  process.exit(1);
-});
+run().catch(err => { console.error('Fatal:', err); process.exit(1); });

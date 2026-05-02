@@ -33,7 +33,14 @@ const HEALTH_ENDPOINTS = [
 interface HealthResult { path: string; status: number; ok: boolean; error?: string }
 interface Health { up: number; total: number; allUp: boolean; down: HealthResult[]; results: HealthResult[] }
 interface RegCheck { run_at: string; status: string; summary?: string }
-interface Stats { subscribers: number; newSubscribers: number; votes: Record<string, number>; lastRegCheck: RegCheck | null }
+interface PendingApproval { id: string; summary: string; run_at: string; details: Record<string, string> }
+interface Stats {
+  subscribers:      number;
+  newSubscribers:   number;
+  votes:            Record<string, number>;
+  lastRegCheck:     RegCheck | null;
+  pendingApprovals: PendingApproval[];
+}
 interface Deadline { label: string; date: Date; daysAway: number }
 
 // ── HEALTH CHECK ──────────────────────────────────────────────────────────────
@@ -58,18 +65,22 @@ async function checkSiteHealth(): Promise<Health> {
 
 // ── SUPABASE STATS ────────────────────────────────────────────────────────────
 async function fetchStats(db: SupabaseClient | null): Promise<Stats> {
-  if (!db) return { subscribers: 0, newSubscribers: 0, votes: {}, lastRegCheck: null };
+  if (!db) return { subscribers: 0, newSubscribers: 0, votes: {}, lastRegCheck: null, pendingApprovals: [] };
 
   const yesterday = new Date(Date.now() - 86_400_000).toISOString();
 
-  const [subTotal, subNew, votesRaw, lastRun] = await Promise.all([
+  const [subTotal, subNew, votesRaw, lastRun, pendingRaw] = await Promise.all([
     db.from('email_subscribers').select('id', { count: 'exact', head: true }).eq('project', PROJECT),
     db.from('email_subscribers').select('id', { count: 'exact', head: true })
       .eq('project', PROJECT).gte('created_at', yesterday),
     db.from('feature_votes').select('feature_id').eq('project', PROJECT),
     db.from('agent_runs').select('run_at, status, summary')
       .eq('project', PROJECT).eq('agent_name', 'regulatory-check')
+      .not('status', 'eq', 'pending_approval')
       .order('run_at', { ascending: false }).limit(1),
+    db.from('agent_runs').select('id, summary, run_at, details')
+      .eq('project', PROJECT).eq('status', 'pending_approval')
+      .order('run_at', { ascending: false }),
   ]);
 
   const votes: Record<string, number> = {};
@@ -78,10 +89,11 @@ async function fetchStats(db: SupabaseClient | null): Promise<Stats> {
   }
 
   return {
-    subscribers:    subTotal.count  ?? 0,
-    newSubscribers: subNew.count    ?? 0,
+    subscribers:      subTotal.count  ?? 0,
+    newSubscribers:   subNew.count    ?? 0,
     votes,
-    lastRegCheck:   lastRun.data?.[0] ?? null,
+    lastRegCheck:     lastRun.data?.[0] ?? null,
+    pendingApprovals: (pendingRaw.data ?? []) as PendingApproval[],
   };
 }
 
@@ -149,9 +161,17 @@ function formatBriefing(stats: Stats, health: Health, deadline: Deadline | null,
     ? `All ${health.total} checks passed`
     : `${health.up}/${health.total} — DOWN: ${health.down.map(d => d.path).join(', ')}`;
 
-  const regStr = stats.lastRegCheck
-    ? `${stats.lastRegCheck.status === 'success' ? '✓' : '⚠'} ${stats.lastRegCheck.summary ?? stats.lastRegCheck.status} (${fmtDate(stats.lastRegCheck.run_at)})`
-    : 'Not run yet';
+  // Regulatory status
+  let regStr: string;
+  if (stats.pendingApprovals.length > 0) {
+    regStr = `⚠️ ${stats.pendingApprovals.length} change(s) pending approval`;
+  } else if (stats.lastRegCheck) {
+    regStr = stats.lastRegCheck.summary?.includes('verified')
+      ? `Regulatory: All rates verified ✅ (${fmtDate(stats.lastRegCheck.run_at)})`
+      : `${stats.lastRegCheck.status === 'success' ? '✓' : '⚠'} ${stats.lastRegCheck.summary ?? stats.lastRegCheck.status} (${fmtDate(stats.lastRegCheck.run_at)})`;
+  } else {
+    regStr = 'Not run yet';
+  }
 
   const deadlineStr = deadline
     ? `${deadline.label} due in ${deadline.daysAway} day${deadline.daysAway !== 1 ? 's' : ''} (${fmtDate(deadline.date)})`
@@ -159,13 +179,19 @@ function formatBriefing(stats: Stats, health: Health, deadline: Deadline | null,
 
   const newSubs = stats.newSubscribers > 0 ? ` (+${stats.newSubscribers} new)` : '';
 
+  const pendingLines = stats.pendingApprovals.map((p, i) => {
+    const d = p.details as Record<string, string>;
+    return `  ${i + 1}. ${d.rate_name}: ${d.old_value} → ${d.new_value}\n     APPROVE ${p.id}\n     IGNORE  ${p.id}`;
+  });
+
   return [
     `*SPAK Morning Brief — ${dateStr}*`,
     '',
     `📧 Subscribers: ${stats.subscribers}${newSubs}`,
     `🗳️  Top vote: ${topVoteStr}`,
     `${healthIcon} Site health: ${healthStr}`,
-    `📋 Regulatory: ${regStr}`,
+    `📋 ${regStr}`,
+    ...(pendingLines.length > 0 ? ['', '⚠️ Pending regulatory approvals:', ...pendingLines] : []),
     `⏰ Next deadline: ${deadlineStr}`,
     '',
     '_OuBiznes.mu — Powered by SPAK_',
