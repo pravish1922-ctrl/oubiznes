@@ -13,6 +13,7 @@ const DIVIDER = "#d0c9be";
 
 interface Tool { href: string; emoji: string; title: string; desc: string }
 interface VoteItem { id: string; title: string; desc: string; hot?: boolean }
+interface ModalState { featureId: string; title: string }
 
 const STARTING: Tool[] = [
   { href: "/structure", emoji: "🏗️", title: "Business Structure Advisor", desc: "Sole trader, partnership, or Ltd? 5 questions, clear answer." },
@@ -78,20 +79,30 @@ function ToolRow({ tool, hovered, onEnter, onLeave }: {
   );
 }
 
+type ModalStatus = "idle" | "sending" | "done" | "already" | "error";
+type SubState    = "idle" | "sending" | "done" | "already" | "error";
+
 export default function Home() {
-  const [hovered, setHovered] = useState<string | null>(null);
-  const [votes, setVotes]     = useState<Record<string, number>>(
+  const [hovered, setHovered]     = useState<string | null>(null);
+  const [votes, setVotes]         = useState<Record<string, number>>(
     Object.fromEntries(COMING_NEXT.map(c => [c.id, 0]))
   );
-  const [voted, setVoted]     = useState<Set<string>>(new Set());
+  const [voted, setVoted]         = useState<Set<string>>(new Set());
   const [statusLine, setStatusLine] = useState<string>(
     "All 8 tools live and monitored. Powered by SPAK"
   );
-  const [email, setEmail]     = useState("");
-  const [subState, setSubState] = useState<"idle" | "sending" | "done" | "error">("idle");
+
+  // Subscribe strip
+  const [email, setEmail]         = useState("");
+  const [subState, setSubState]   = useState<SubState>("idle");
   const emailRef = useRef<HTMLInputElement>(null);
 
-  // Load real vote counts from Supabase (via API route)
+  // Vote modal
+  const [modal, setModal]           = useState<ModalState | null>(null);
+  const [modalEmail, setModalEmail] = useState("");
+  const [modalStatus, setModalStatus] = useState<ModalStatus>("idle");
+
+  // Load vote counts from Supabase
   useEffect(() => {
     fetch("/api/votes")
       .then(r => r.ok ? r.json() : null)
@@ -107,25 +118,47 @@ export default function Home() {
       .catch(() => {});
   }, []);
 
-  async function vote(id: string) {
-    if (voted.has(id)) return;
-    // Optimistic update
-    setVotes(v => ({ ...v, [id]: v[id] + 1 }));
-    setVoted(s => new Set(s).add(id));
+  function openVoteModal(item: VoteItem) {
+    if (voted.has(item.id)) return;
+    setModal({ featureId: item.id, title: item.title });
+    setModalEmail("");
+    setModalStatus("idle");
+  }
+
+  function closeModal() {
+    setModal(null);
+    setModalEmail("");
+    setModalStatus("idle");
+  }
+
+  async function handleVoteSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!modal || !modalEmail || modalStatus === "sending") return;
+    setModalStatus("sending");
     try {
-      await fetch("/api/votes", {
+      const res = await fetch("/api/votes", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ feature_id: id }),
+        body:    JSON.stringify({ feature_id: modal.featureId, email: modalEmail }),
       });
+      const data = await res.json();
+      if (data.already) {
+        setModalStatus("already");
+      } else if (res.ok || data.ok) {
+        setVotes(v => ({ ...v, [modal.featureId]: v[modal.featureId] + 1 }));
+        setVoted(s => new Set(s).add(modal.featureId));
+        setModalStatus("done");
+      } else {
+        setModalStatus("error");
+      }
     } catch {
-      // Vote still counted locally even if network fails
+      setModalStatus("error");
     }
   }
 
   async function handleSubscribe(e: React.FormEvent) {
     e.preventDefault();
-    if (!email || subState === "sending" || subState === "done") return;
+    if (!email || subState === "sending" || subState === "done" || subState === "already") return;
     setSubState("sending");
     try {
       const res = await fetch("/api/subscribe", {
@@ -135,7 +168,7 @@ export default function Home() {
       });
       const data = await res.json();
       if (res.ok || data.ok) {
-        setSubState("done");
+        setSubState(data.already ? "already" : "done");
         setEmail("");
       } else {
         setSubState("error");
@@ -178,6 +211,101 @@ export default function Home() {
           }
         }
       `}</style>
+
+      {/* Vote modal */}
+      {modal && (
+        <div
+          onClick={closeModal}
+          style={{
+            position: "fixed", inset: 0,
+            background: "rgba(0,0,0,0.4)",
+            zIndex: 50,
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: "#fff",
+              borderRadius: 12,
+              padding: "28px 32px",
+              maxWidth: 400,
+              width: "90%",
+              position: "relative",
+            }}
+          >
+            {/* Close */}
+            <button
+              onClick={closeModal}
+              style={{
+                position: "absolute", top: 14, right: 16,
+                background: "none", border: "none",
+                fontSize: 18, color: "#999", cursor: "pointer", lineHeight: 1,
+              }}
+            >
+              ×
+            </button>
+
+            <div style={{ fontWeight: 700, fontSize: 16, color: "#1a2332", marginBottom: 6 }}>
+              Vote for {modal.title}
+            </div>
+            <div style={{ fontSize: 12, color: "#999", marginBottom: 20 }}>
+              Enter your email to register your vote. We&apos;ll only contact you when this feature is ready.
+            </div>
+
+            {modalStatus === "done" && (
+              <div style={{ background: "#D1FAE5", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#065F46", marginBottom: 12 }}>
+                Vote recorded! We&apos;ll email you when it&apos;s ready.
+              </div>
+            )}
+
+            {modalStatus === "already" && (
+              <div style={{ background: "#D1FAE5", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#065F46", marginBottom: 12 }}>
+                You&apos;ve already voted! We&apos;ll notify you when it launches.
+              </div>
+            )}
+
+            {modalStatus === "error" && (
+              <div style={{ background: "#FEE2E2", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#991B1B", marginBottom: 12 }}>
+                Something went wrong. Please try again.
+              </div>
+            )}
+
+            {(modalStatus === "done" || modalStatus === "already") ? null : (
+              <form onSubmit={handleVoteSubmit}>
+                <input
+                  type="email"
+                  value={modalEmail}
+                  onChange={e => setModalEmail(e.target.value)}
+                  placeholder="your@email.com"
+                  required
+                  autoFocus
+                  style={{
+                    width: "100%", boxSizing: "border-box",
+                    border: "1px solid #e0d9ce", borderRadius: 8,
+                    padding: "10px 14px", fontSize: 13,
+                    background: CREAM, color: NAVY, outline: "none",
+                  }}
+                />
+                <button
+                  type="submit"
+                  disabled={modalStatus === "sending"}
+                  style={{
+                    width: "100%", marginTop: 10,
+                    background: PRIMARY, color: "#fff",
+                    border: "none", borderRadius: 8,
+                    padding: 10, fontWeight: 700, fontSize: 13,
+                    cursor: modalStatus === "sending" ? "wait" : "pointer",
+                    opacity: modalStatus === "sending" ? 0.7 : 1,
+                  }}
+                >
+                  {modalStatus === "sending" ? "Submitting..." : "Submit Vote"}
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
 
       <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: CREAM, colorScheme: "light" }}>
 
@@ -247,7 +375,7 @@ export default function Home() {
                     <div style={{ fontSize: 10, color: "#aaa", marginBottom: 8, lineHeight: 1.4 }}>{item.desc}</div>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                       <button
-                        onClick={() => vote(item.id)}
+                        onClick={() => openVoteModal(item)}
                         disabled={hasVoted}
                         style={{
                           background: hasVoted ? "#e5e7eb" : PRIMARY,
@@ -275,8 +403,10 @@ export default function Home() {
             <div style={{ fontSize: 13, fontWeight: 700, color: NAVY }}>Stay updated — free tools, new features, grant alerts.</div>
             <div style={{ fontSize: 11, color: "#6b7280" }}>No spam. One email when something useful drops.</div>
           </div>
-          {subState === "done" ? (
-            <div style={{ fontSize: 13, color: PRIMARY, fontWeight: 600 }}>You&apos;re on the list.</div>
+          {(subState === "done" || subState === "already") ? (
+            <div style={{ fontSize: 13, color: PRIMARY, fontWeight: 600 }}>
+              {subState === "already" ? "You’re already on the list!" : "You’re on the list."}
+            </div>
           ) : (
             <form onSubmit={handleSubscribe} style={{ display: "flex", gap: 8, flexShrink: 0 }}>
               <input

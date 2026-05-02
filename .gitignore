@@ -13,3 +13,16 @@ out/
 .DS_Store
 *.pem
 npm-debug.log*
+
+# Agent 5 logs
+logs/
+
+# Graphify knowledge graph (local dev tool only)
+.graphify/
+
+# Test/debug screenshots (exclude public/ assets)
+*.png
+!public/**/*.png
+
+# TypeScript build info
+tsconfig.tsbuildinfo

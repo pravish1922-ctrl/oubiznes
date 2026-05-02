@@ -42,12 +42,14 @@ export async function GET() {
   return NextResponse.json(counts);
 }
 
-// POST /api/votes  body: { feature_id: string }
+// POST /api/votes  body: { feature_id: string, email: string }
 export async function POST(request: Request) {
   let featureId: string;
+  let email: string;
   try {
     const body = await request.json();
     featureId = body.feature_id;
+    email = (body.email || '').trim().toLowerCase();
   } catch {
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
   }
@@ -56,25 +58,38 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unknown feature' }, { status: 400 });
   }
 
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return NextResponse.json({ error: 'Invalid email' }, { status: 400 });
+  }
+
   if (!process.env.SUPABASE_URL) {
     return NextResponse.json({ ok: true, persisted: false });
   }
 
   const db = getDb();
-  const fp = fingerprint(request);
 
+  // Check for existing vote by this email for this feature
+  const { data: existing } = await db
+    .from('feature_votes')
+    .select('id')
+    .eq('project', 'oubiznes')
+    .eq('feature_id', featureId)
+    .eq('email', email)
+    .maybeSingle();
+
+  if (existing) {
+    return NextResponse.json({ ok: true, already: true });
+  }
+
+  const fp = fingerprint(request);
   const { error } = await db.from('feature_votes').insert({
     project:     'oubiznes',
     feature_id:  featureId,
+    email,
     fingerprint: fp,
   });
 
   if (error) {
-    // Unique violation = already voted for this feature from same device
-    if (error.code === '23505') {
-      return NextResponse.json({ ok: true, already: true });
-    }
-    console.error('Vote error:', error);
     return NextResponse.json({ error: 'Failed to record' }, { status: 500 });
   }
 

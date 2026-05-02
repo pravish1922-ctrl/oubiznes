@@ -27,22 +27,25 @@ export async function POST(request: Request) {
   }
 
   const db = getDb();
-  const source = new URL(request.url).searchParams.get('source') || 'home_strip';
 
-  const { error } = await db.from('email_subscribers').insert({
-    project: 'oubiznes',
-    email,
-    source,
-  });
+  // Write to both tables in parallel
+  const [emailSubsResult, subscribersResult] = await Promise.all([
+    db.from('email_subscribers').insert({ project: 'oubiznes', email, source: 'home_strip' }),
+    db.from('subscribers').insert({ email, source: 'homepage-notify' }),
+  ]);
 
-  if (error) {
-    // Unique violation = already subscribed, treat as success
-    if (error.code === '23505') {
-      return NextResponse.json({ ok: true, already: true });
-    }
-    console.error('Subscribe error:', error);
+  const alreadyInEmailSubs = emailSubsResult.error?.code === '23505';
+  const alreadyInSubs      = subscribersResult.error?.code === '23505';
+  const already            = alreadyInEmailSubs || alreadyInSubs;
+
+  // A non-duplicate error from either table is a real failure
+  const hardError =
+    (emailSubsResult.error && !alreadyInEmailSubs) ||
+    (subscribersResult.error && !alreadyInSubs);
+
+  if (hardError) {
     return NextResponse.json({ error: 'Failed to save' }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, already });
 }
