@@ -145,26 +145,21 @@ export default function Home() {
     }
   }
 
-  const quadrant: React.CSSProperties = { background: CREAM, padding: "16px 28px", overflow: "auto", alignContent: "start" };
+  const col: React.CSSProperties = { background: CREAM, padding: "16px 24px", alignContent: "start" };
   const hairline = "1px solid #ede8df";
-  const q = (col: 1 | 2, row: 1 | 2): React.CSSProperties => ({
-    ...quadrant,
-    borderLeft:  col === 2 ? hairline : "none",
-    borderTop:   row === 2 ? hairline : "none",
-  });
+  const col1: React.CSSProperties = { ...col, borderRight: hairline };
+  const col2: React.CSSProperties = { ...col, borderRight: hairline };
+  const col3: React.CSSProperties = { ...col };
 
   return (
     <>
       <style>{`
         .home-grid {
           display: grid;
-          grid-template-columns: 1fr 1fr;
-          grid-template-rows: 1fr 1fr;
+          grid-template-columns: 1fr 1fr 1fr;
+          grid-template-rows: auto;
           gap: 0;
           background: transparent;
-          height: calc(100vh - 192px);
-          min-height: 0;
-          overflow: hidden;
         }
         .email-strip {
           display: flex;
@@ -175,9 +170,6 @@ export default function Home() {
         @media (max-width: 768px) {
           .home-grid {
             grid-template-columns: 1fr !important;
-            grid-template-rows: auto !important;
-            height: auto !important;
-            overflow: visible !important;
           }
           .email-strip {
             flex-direction: column;
@@ -207,29 +199,27 @@ export default function Home() {
           </p>
         </header>
 
-        {/* 2×2 grid */}
+        {/* 3-column grid */}
         <main className="home-grid">
 
-          {/* Top-left: STARTING A BUSINESS */}
-          <div style={q(1, 1)}>
+          {/* Col 1: Starting a Business + Funding & Growth */}
+          <div style={col1}>
             <div style={SECTION_HEADER}>Starting a Business</div>
             {STARTING.map(t => (
               <ToolRow key={t.href} tool={t} hovered={hovered === t.href}
                 onEnter={() => setHovered(t.href)} onLeave={() => setHovered(null)} />
             ))}
+            <div style={{ borderTop: hairline, marginTop: 16, paddingTop: 16 }}>
+              <div style={SECTION_HEADER}>Funding &amp; Growth</div>
+              {FUNDING.map(t => (
+                <ToolRow key={t.href} tool={t} hovered={hovered === t.href}
+                  onEnter={() => setHovered(t.href)} onLeave={() => setHovered(null)} />
+              ))}
+            </div>
           </div>
 
-          {/* Top-right: FUNDING & GROWTH */}
-          <div style={q(2, 1)}>
-            <div style={SECTION_HEADER}>Funding &amp; Growth</div>
-            {FUNDING.map(t => (
-              <ToolRow key={t.href} tool={t} hovered={hovered === t.href}
-                onEnter={() => setHovered(t.href)} onLeave={() => setHovered(null)} />
-            ))}
-          </div>
-
-          {/* Bottom-left: COMPLIANCE & OPERATIONS */}
-          <div style={q(1, 2)}>
+          {/* Col 2: Compliance & Operations */}
+          <div style={col2}>
             <div style={SECTION_HEADER}>Compliance &amp; Operations</div>
             {COMPLIANCE.map(t => (
               <ToolRow key={t.href} tool={t} hovered={hovered === t.href}
@@ -237,10 +227,10 @@ export default function Home() {
             ))}
           </div>
 
-          {/* Bottom-right: COMING NEXT — VOTE */}
-          <div style={q(2, 2)}>
+          {/* Col 3: Coming Next — Vote */}
+          <div style={col3}>
             <div style={SECTION_HEADER}>Coming Next — Vote</div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {COMING_NEXT.map(item => {
                 const hasVoted = voted.has(item.id);
                 return (
