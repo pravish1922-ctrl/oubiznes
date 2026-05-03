@@ -15,6 +15,22 @@
     {
       "path": "/api/spak/regulatory-check",
       "schedule": "0 4 * * 1"
+    },
+    {
+      "path": "/api/spak/qa-test",
+      "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/spak/grants-watchdog",
+      "schedule": "0 5 * * 3"
+    },
+    {
+      "path": "/api/spak/mra-monitor",
+      "schedule": "0 5 * * 4"
+    },
+    {
+      "path": "/api/spak/orchestrate",
+      "schedule": "0 7 * * 1"
     }
   ]
 }

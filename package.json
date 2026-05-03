@@ -9,7 +9,8 @@
     "lint": "next lint",
     "regulatory-check": "node --env-file=.env.local scripts/regulatory-check.mjs",
     "spak-briefing": "node --env-file=.env.local scripts/spak-briefing.mjs",
-    "wiki-save": "node --env-file=.env.local scripts/wiki-save.mjs"
+    "wiki-save": "node --env-file=.env.local scripts/wiki-save.mjs",
+    "qa-test": "node --env-file=.env.local scripts/qa-test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.105.1",
