@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npx next *)"
+      "Bash(npx next *)",
+      "Bash(node scripts/regulatory-check.mjs)",
+      "Bash(echo \"exit code: $?\")",
+      "Bash(node -e ' *)",
+      "Read(//c/Users/conta/.claude/**)"
     ]
   }
 }
