@@ -6,7 +6,7 @@
     },
     {
       "path": "/api/spak/email-reply",
-      "schedule": "*/30 * * * *"
+      "schedule": "0 12 * * *"
     },
     {
       "path": "/api/spak/weekly-digest",

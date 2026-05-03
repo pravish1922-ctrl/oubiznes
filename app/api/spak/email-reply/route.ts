@@ -56,7 +56,7 @@ export async function GET(request: Request) {
     // Fetch unseen messages from the last 48 hours
     const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000);
     for await (const msg of client.fetch(
-      { since: cutoff, unseen: true },
+      { since: cutoff, seen: false },
       { bodyParts: ['TEXT'], envelope: true }
     )) {
       const rawText = (msg.bodyParts?.get('TEXT') ?? '').toString();
@@ -88,3 +88,4 @@ export async function GET(request: Request) {
 
   return NextResponse.json({ ok: true, processed, errors });
 }
+
