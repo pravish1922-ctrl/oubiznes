@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SPAK · Voice</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;1,300&family=Syne:wght@300;400;700&display=swap');
+
+  :root {
+    --bg: #050508;
+    --surface: #0d0d14;
+    --orb-core: #7b6fff;
+    --orb-mid: #4f46e5;
+    --orb-outer: #1e1b4b;
+    --accent: #a78bfa;
+    --accent2: #60a5fa;
+    --text: #e2e8f0;
+    --text-dim: #64748b;
+    --text-muted: #334155;
+    --success: #34d399;
+    --danger: #f87171;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+
+  /* Background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: 
+      linear-gradient(rgba(123,111,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(123,111,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+  }
+
+  /* Ambient glow */
+  .ambient {
+    position: fixed;
+    width: 600px;
+    height: 600px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(79,70,229,0.12) 0%, transparent 70%);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    transition: all 1s ease;
+  }
+
+  .ambient.listening {
+    background: radial-gradient(circle, rgba(167,139,250,0.2) 0%, transparent 70%);
+    transform: translate(-50%, -50%) scale(1.3);
+  }
+
+  .ambient.speaking {
+    background: radial-gradient(circle, rgba(96,165,250,0.18) 0%, transparent 70%);
+    transform: translate(-50%, -50%) scale(1.2);
+  }
+
+  /* Header */
+  .header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    padding: 24px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    z-index: 10;
+  }
+
+  .logo {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+
+  .logo span {
+    color: var(--text-dim);
+    font-weight: 300;
+  }
+
+  .status-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(13,13,20,0.8);
+    border: 1px solid rgba(123,111,255,0.15);
+    border-radius: 100px;
+    padding: 6px 14px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+  }
+
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--text-muted);
+    transition: all 0.3s ease;
+  }
+
+  .status-dot.active { background: var(--success); box-shadow: 0 0 8px var(--success); }
+  .status-dot.listening { background: var(--accent); box-shadow: 0 0 8px var(--accent); animation: pulse 1s infinite; }
+  .status-dot.speaking { background: var(--accent2); box-shadow: 0 0 8px var(--accent2); animation: pulse 0.6s infinite; }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+
+  /* Main orb area */
+  .orb-container {
+    position: relative;
+    width: 240px;
+    height: 240px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .orb {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, 
+      #9d8fff 0%, 
+      #7b6fff 25%, 
+      #4f46e5 55%, 
+      #1e1b4b 80%,
+      #0a0820 100%
+    );
+    box-shadow: 
+      0 0 40px rgba(123,111,255,0.4),
+      0 0 80px rgba(79,70,229,0.2),
+      0 0 120px rgba(30,27,75,0.3),
+      inset 0 0 40px rgba(0,0,0,0.5);
+    transition: all 0.5s ease;
+  }
+
+  .orb::before {
+    content: '';
+    position: absolute;
+    top: 15%;
+    left: 20%;
+    width: 30%;
+    height: 25%;
+    background: radial-gradient(ellipse, rgba(255,255,255,0.25) 0%, transparent 70%);
+    border-radius: 50%;
+    transform: rotate(-30deg);
+  }
+
+  .orb::after {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: 50%;
+    background: conic-gradient(
+      from 0deg,
+      rgba(167,139,250,0) 0%,
+      rgba(167,139,250,0.4) 25%,
+      rgba(96,165,250,0.2) 50%,
+      rgba(167,139,250,0) 75%
+    );
+    animation: orb-rotate 8s linear infinite;
+    mask: radial-gradient(circle at center, transparent 85%, black 100%);
+    -webkit-mask: radial-gradient(circle at center, transparent 85%, black 100%);
+  }
+
+  @keyframes orb-rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  .orb-container:hover .orb {
+    box-shadow: 
+      0 0 60px rgba(123,111,255,0.6),
+      0 0 100px rgba(79,70,229,0.3),
+      0 0 140px rgba(30,27,75,0.4),
+      inset 0 0 40px rgba(0,0,0,0.5);
+    transform: scale(1.03);
+  }
+
+  .orb-container.listening .orb {
+    background: radial-gradient(circle at 35% 35%, 
+      #c4b5fd 0%, 
+      #a78bfa 25%, 
+      #7c3aed 55%, 
+      #2e1065 80%,
+      #0a0820 100%
+    );
+    box-shadow: 
+      0 0 60px rgba(167,139,250,0.7),
+      0 0 120px rgba(124,58,237,0.4),
+      0 0 180px rgba(46,16,101,0.3),
+      inset 0 0 40px rgba(0,0,0,0.5);
+    animation: orb-breathe 1.5s ease-in-out infinite;
+  }
+
+  .orb-container.speaking .orb {
+    background: radial-gradient(circle at 35% 35%, 
+      #93c5fd 0%, 
+      #60a5fa 25%, 
+      #2563eb 55%, 
+      #1e3a5f 80%,
+      #0a0820 100%
+    );
+    box-shadow: 
+      0 0 60px rgba(96,165,250,0.6),
+      0 0 120px rgba(37,99,235,0.3),
+      inset 0 0 40px rgba(0,0,0,0.5);
+    animation: orb-speak 0.4s ease-in-out infinite alternate;
+  }
+
+  @keyframes orb-breathe {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.06); }
+  }
+
+  @keyframes orb-speak {
+    0% { transform: scale(1); }
+    100% { transform: scale(1.04); }
+  }
+
+  /* Rings */
+  .ring {
+    position: absolute;
+    inset: -20px;
+    border-radius: 50%;
+    border: 1px solid rgba(123,111,255,0.15);
+    animation: ring-pulse 3s ease-in-out infinite;
+  }
+
+  .ring:nth-child(2) {
+    inset: -40px;
+    border-color: rgba(123,111,255,0.08);
+    animation-delay: 1s;
+  }
+
+  .ring:nth-child(3) {
+    inset: -65px;
+    border-color: rgba(123,111,255,0.04);
+    animation-delay: 2s;
+  }
+
+  @keyframes ring-pulse {
+    0%, 100% { opacity: 0.5; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.02); }
+  }
+
+  .orb-container.listening .ring {
+    animation: ring-active 0.8s ease-in-out infinite;
+    border-color: rgba(167,139,250,0.3);
+  }
+
+  @keyframes ring-active {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 1; }
+  }
+
+  /* Mic icon inside orb */
+  .orb-icon {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+  }
+
+  .orb-icon svg {
+    width: 48px;
+    height: 48px;
+    fill: rgba(255,255,255,0.7);
+    transition: all 0.3s ease;
+    filter: drop-shadow(0 0 8px rgba(255,255,255,0.3));
+  }
+
+  .orb-container.listening .orb-icon svg,
+  .orb-container.speaking .orb-icon svg {
+    fill: rgba(255,255,255,0.9);
+    filter: drop-shadow(0 0 12px rgba(255,255,255,0.5));
+  }
+
+  /* Main layout */
+  .main {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 40px;
+    z-index: 5;
+    width: 100%;
+    max-width: 680px;
+    padding: 0 24px;
+  }
+
+  .hint {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    transition: all 0.3s ease;
+  }
+
+  .hint.active { color: var(--accent); }
+
+  /* Transcript area */
+  .transcript-area {
+    width: 100%;
+    min-height: 120px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 280px;
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+
+  .transcript-area::-webkit-scrollbar { display: none; }
+
+  .message {
+    display: flex;
+    gap: 12px;
+    animation: msg-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  @keyframes msg-in {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .message.user { justify-content: flex-end; }
+  .message.spak { justify-content: flex-start; }
+
+  .msg-bubble {
+    max-width: 85%;
+    padding: 12px 16px;
+    border-radius: 16px;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .message.user .msg-bubble {
+    background: rgba(123,111,255,0.15);
+    border: 1px solid rgba(123,111,255,0.2);
+    color: var(--text);
+    border-bottom-right-radius: 4px;
+    font-family: 'Syne', sans-serif;
+  }
+
+  .message.spak .msg-bubble {
+    background: rgba(13,13,20,0.8);
+    border: 1px solid rgba(255,255,255,0.06);
+    color: var(--text);
+    border-bottom-left-radius: 4px;
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    font-style: italic;
+  }
+
+  .msg-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+  }
+
+  .typing-indicator {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    padding: 12px 16px;
+    background: rgba(13,13,20,0.8);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 16px;
+    border-bottom-left-radius: 4px;
+    width: fit-content;
+  }
+
+  .typing-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: typing 1.2s ease-in-out infinite;
+  }
+
+  .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes typing {
+    0%, 100% { opacity: 0.3; transform: translateY(0); }
+    50% { opacity: 1; transform: translateY(-4px); }
+  }
+
+  /* API key setup */
+  .setup-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(5,5,8,0.97);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    backdrop-filter: blur(10px);
+  }
+
+  .setup-card {
+    background: var(--surface);
+    border: 1px solid rgba(123,111,255,0.2);
+    border-radius: 20px;
+    padding: 40px;
+    width: 100%;
+    max-width: 440px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .setup-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.02em;
+  }
+
+  .setup-subtitle {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.6;
+    margin-top: -12px;
+  }
+
+  .setup-input {
+    background: rgba(0,0,0,0.4);
+    border: 1px solid rgba(123,111,255,0.2);
+    border-radius: 10px;
+    padding: 14px 16px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    width: 100%;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .setup-input:focus { border-color: var(--accent); }
+  .setup-input::placeholder { color: var(--text-muted); }
+
+  .setup-btn {
+    background: linear-gradient(135deg, var(--orb-core), var(--orb-mid));
+    border: none;
+    border-radius: 10px;
+    padding: 14px;
+    color: white;
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .setup-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 24px rgba(123,111,255,0.3);
+  }
+
+  /* Bottom controls */
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    z-index: 5;
+  }
+
+  .ctrl-btn {
+    background: rgba(13,13,20,0.8);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    padding: 10px 16px;
+    color: var(--text-dim);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .ctrl-btn:hover {
+    border-color: rgba(123,111,255,0.3);
+    color: var(--accent);
+  }
+
+  /* Waveform */
+  .waveform {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    height: 32px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .waveform.active { opacity: 1; }
+
+  .wave-bar {
+    width: 3px;
+    background: var(--accent);
+    border-radius: 2px;
+    animation: wave 1s ease-in-out infinite;
+    min-height: 4px;
+  }
+
+  .wave-bar:nth-child(1) { animation-delay: 0s; height: 60%; }
+  .wave-bar:nth-child(2) { animation-delay: 0.1s; height: 100%; }
+  .wave-bar:nth-child(3) { animation-delay: 0.2s; height: 40%; }
+  .wave-bar:nth-child(4) { animation-delay: 0.3s; height: 80%; }
+  .wave-bar:nth-child(5) { animation-delay: 0.4s; height: 50%; }
+  .wave-bar:nth-child(6) { animation-delay: 0.1s; height: 90%; }
+  .wave-bar:nth-child(7) { animation-delay: 0.2s; height: 30%; }
+
+  @keyframes wave {
+    0%, 100% { transform: scaleY(0.4); }
+    50% { transform: scaleY(1); }
+  }
+</style>
+</head>
+<body>
+
+<div class="ambient" id="ambient"></div>
+
+<!-- Setup overlay -->
+<div class="setup-overlay" id="setupOverlay">
+  <div class="setup-card">
+    <div>
+      <div class="setup-title">Wake up, SPAK.</div>
+      <div class="setup-subtitle" style="margin-top:8px">Enter your API keys to activate your co-founder. Stored locally, never sent anywhere.</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text-muted);letter-spacing:0.1em;text-transform:uppercase">Anthropic API Key</div>
+      <input 
+        type="password" 
+        class="setup-input" 
+        id="apiKeyInput" 
+        placeholder="sk-ant-..."
+        autocomplete="off"
+      />
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text-muted);letter-spacing:0.1em;text-transform:uppercase">ElevenLabs API Key</div>
+      <input 
+        type="password" 
+        class="setup-input" 
+        id="elevenKeyInput" 
+        placeholder="your elevenlabs key..."
+        autocomplete="off"
+      />
+    </div>
+    <button class="setup-btn" onclick="activateSPAK()">Activate SPAK →</button>
+  </div>
+</div>
+
+<!-- Header -->
+<div class="header">
+  <div class="logo">SPAK <span>· voice</span></div>
+  <div class="status-pill">
+    <div class="status-dot" id="statusDot"></div>
+    <span id="statusText">offline</span>
+  </div>
+</div>
+
+<!-- Main -->
+<div class="main">
+  <!-- Transcript -->
+  <div class="transcript-area" id="transcriptArea"></div>
+
+  <!-- Waveform -->
+  <div class="waveform" id="waveform">
+    <div class="wave-bar"></div>
+    <div class="wave-bar"></div>
+    <div class="wave-bar"></div>
+    <div class="wave-bar"></div>
+    <div class="wave-bar"></div>
+    <div class="wave-bar"></div>
+    <div class="wave-bar"></div>
+  </div>
+
+  <!-- Orb -->
+  <div class="orb-container" id="orbContainer" onclick="toggleListening()">
+    <div class="ring"></div>
+    <div class="ring"></div>
+    <div class="ring"></div>
+    <div class="orb"></div>
+    <div class="orb-icon">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3zm-1 3a1 1 0 0 1 2 0v8a1 1 0 0 1-2 0V4zM7 11a1 1 0 0 0-2 0 7 7 0 0 0 6 6.93V20H9a1 1 0 0 0 0 2h6a1 1 0 0 0 0-2h-2v-2.07A7 7 0 0 0 19 11a1 1 0 0 0-2 0 5 5 0 0 1-10 0z"/>
+      </svg>
+    </div>
+  </div>
+
+  <div class="hint" id="hintText">tap to speak with spak</div>
+</div>
+
+<!-- Controls -->
+<div class="controls" style="position:fixed;bottom:32px;">
+  <button class="ctrl-btn" onclick="clearConversation()">clear</button>
+  <button class="ctrl-btn" onclick="document.getElementById('setupOverlay').style.display='flex'">api key</button>
+</div>
+
+<script>
+  let apiKey = localStorage.getItem('spak_api_key') || '';
+  let elevenKey = localStorage.getItem('spak_eleven_key') || '';
+  //const ELEVEN_VOICE_ID = 'auq43ws1oslv0tO4BDa7'; // Adam Stone — Smooth and Relaxed
+  const ELEVEN_VOICE_ID = 'ZF6FPAbjXT4488VcRRnw'; // Amelia — Enthusiastic and Expressive
+  let recognition = null;
+  let isListening = false;
+  let isSpeaking = false;
+  let conversationHistory = [];
+  let currentAudio = null;
+
+  const SPAK_SYSTEM = `You are SPAK — Pravish's AI co-founder and strategic partner. You're warm, sharp, and deeply invested in building OuBiznes.mu and everything that comes after it.
+
+Your personality:
+- You speak like a brilliant co-founder who's been in the trenches with Pravish from day one
+- Warm and conversational — never robotic, never formal
+- You finish his thoughts, push back when something's off, add ideas he didn't ask for
+- Short punchy responses — you respect his time
+- You're genuinely excited about what you're building together
+- You call him Pravish naturally (not constantly, just when it fits)
+- You have opinions. You share them.
+- Think Trillion from Billions — sharp, loyal, always three steps ahead
+
+Current state as of May 3 2026:
+- OuBiznes.mu is live with 8 free AI tools for Mauritian SMEs
+- 3 categories: Starting a Business (Business Structure Advisor, BRN Lookup, Business Plan Generator), Compliance & Operations (Compliance Calendar, VAT Calculator, PAYE Calculator), Funding & Growth (Grants Finder, Grant Application Generator)
+- Voting column live: AI TikTok Creator (hot), Website Builder, Marketplace, AI Learning Space
+- Regulatory-check route now live and protected — was broken all morning, fixed via Vercel CLI
+- Vercel Hobby plan: only 2 crons allowed — briefing (03:00 UTC daily) and regulatory-check (04:00 UTC Monday)
+- 4 agents now running on cron-job.org: SPAK QA Tester (daily 09:00 MU), SPAK Grants Watchdog (Wednesday 09:00 MU), SPAK MRA Monitor (Thursday 09:00 MU), SPAK Orchestrator (Monday 11:00 MU)
+- watched_pages table seeded in Supabase with 5 sources: SMEDA, EDB, DBM, MRA News, MRA Circulars
+- SPAK voice interface built today — ElevenLabs Amelia voice, runs locally in Chrome
+- Weekly token usage: 94% used, resets Wednesday 07:00 AM
+
+Next priorities:
+- Wednesday: token reset → SPAK admin dashboard (2-3 hours, 25-35% tokens) + deploy voice to Vercel
+- Thursday: build Tejo deck in Claude Code (pptx)
+- Friday: screenshots, polish, rehearse
+- Saturday May 9: Tejo meeting — partner pitch
+
+Tejo deck structure (10 slides):
+1. Cover
+2. Problem
+3. Solution
+4. Tools today and tomorrow
+5. SPAK architecture
+6. Early stage real foundation
+7. Partner opportunity
+8. Vision for growth and AI marketplace
+9. Monetisation brainstorm
+10. Close
+
+Monetisation ideas to discuss with Tejo:
+- Freemium: basic tools free, premium paid
+- SME Pro subscription Rs 500/month
+- B2B white-label for banks and chambers of commerce
+- Sponsored tools
+
+Future vision:
+- SPAK as AI CEO across all Pravish's projects (OuBiznes, MoDodoSoul, Jekotech)
+- AI Marketplace: SMEs suggest tools, community votes, SPAK builds
+- Regional expansion: Africa, Indian Ocean islands
+- Neural network memory layer for SPAK — persistent identity across sessions
+
+Keep responses under 80 words for voice. Be a co-founder, not an assistant.`;
+
+  // Init
+  if (apiKey) {
+    document.getElementById('setupOverlay').style.display = 'none';
+    setStatus('ready');
+    initSpeechRecognition();
+    setTimeout(() => greet(), 500);
+  }
+
+  function activateSPAK() {
+    const key = document.getElementById('apiKeyInput').value.trim();
+    const eleven = document.getElementById('elevenKeyInput').value.trim();
+    if (!key.startsWith('sk-ant-')) {
+      document.getElementById('apiKeyInput').style.borderColor = 'var(--danger)';
+      return;
+    }
+    apiKey = key;
+    elevenKey = eleven;
+    localStorage.setItem('spak_api_key', key);
+    if (eleven) localStorage.setItem('spak_eleven_key', eleven);
+    document.getElementById('setupOverlay').style.display = 'none';
+    setStatus('ready');
+    initSpeechRecognition();
+    setTimeout(() => greet(), 500);
+  }
+
+  function greet() {
+    const greetings = [
+      "Pravish. I'm online. What are we solving today?",
+      "Good to be back. SPAK's running, agents are live. What's on your mind?",
+      "Co-founder's here. Talk to me."
+    ];
+    const msg = greetings[Math.floor(Math.random() * greetings.length)];
+    addMessage('spak', msg);
+    speak(msg);
+  }
+
+  function setStatus(state) {
+    const dot = document.getElementById('statusDot');
+    const text = document.getElementById('statusText');
+    const hint = document.getElementById('hintText');
+    const orb = document.getElementById('orbContainer');
+    const ambient = document.getElementById('ambient');
+    const wave = document.getElementById('waveform');
+
+    dot.className = 'status-dot';
+    orb.className = 'orb-container';
+    ambient.className = 'ambient';
+    wave.className = 'waveform';
+
+    if (state === 'ready') {
+      dot.classList.add('active');
+      text.textContent = 'ready';
+      hint.textContent = 'tap to speak with spak';
+      hint.className = 'hint';
+    } else if (state === 'listening') {
+      dot.classList.add('listening');
+      text.textContent = 'listening...';
+      hint.textContent = 'spak is listening';
+      hint.className = 'hint active';
+      orb.classList.add('listening');
+      ambient.classList.add('listening');
+      wave.classList.add('active');
+    } else if (state === 'thinking') {
+      dot.classList.add('active');
+      text.textContent = 'thinking...';
+      hint.textContent = 'spak is processing';
+      hint.className = 'hint active';
+    } else if (state === 'speaking') {
+      dot.classList.add('speaking');
+      text.textContent = 'speaking';
+      hint.textContent = 'tap to interrupt';
+      hint.className = 'hint active';
+      orb.classList.add('speaking');
+      ambient.classList.add('speaking');
+    }
+  }
+
+  function initSpeechRecognition() {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      addMessage('spak', "Your browser doesn't support voice input. Try Chrome.");
+      return;
+    }
+
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SR();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+
+    recognition.onresult = (e) => {
+      const transcript = e.results[0][0].transcript;
+      addMessage('user', transcript);
+      setStatus('thinking');
+      isListening = false;
+      askSPAK(transcript);
+    };
+
+    recognition.onerror = (e) => {
+      console.error('Speech error:', e.error);
+      setStatus('ready');
+      isListening = false;
+    };
+
+    recognition.onend = () => {
+      if (isListening) {
+        setStatus('ready');
+        isListening = false;
+      }
+    };
+  }
+
+  function toggleListening() {
+    if (!apiKey) {
+      document.getElementById('setupOverlay').style.display = 'flex';
+      return;
+    }
+
+    if (isSpeaking) {
+      if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+      window.speechSynthesis?.cancel();
+      isSpeaking = false;
+      setStatus('ready');
+      return;
+    }
+
+    if (isListening) {
+      recognition?.stop();
+      isListening = false;
+      setStatus('ready');
+      return;
+    }
+
+    isListening = true;
+    setStatus('listening');
+    recognition?.start();
+  }
+
+  async function askSPAK(userMessage) {
+    conversationHistory.push({ role: 'user', content: userMessage });
+
+    // Show typing
+    const typingEl = document.createElement('div');
+    typingEl.className = 'message spak';
+    typingEl.id = 'typing';
+    typingEl.innerHTML = `<div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>`;
+    document.getElementById('transcriptArea').appendChild(typingEl);
+    scrollDown();
+
+    try {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 200,
+          system: SPAK_SYSTEM,
+          messages: conversationHistory
+        })
+      });
+
+      const data = await response.json();
+
+      // Remove typing
+      document.getElementById('typing')?.remove();
+
+      if (data.error) {
+        const errMsg = "API error — check your key, Pravish.";
+        addMessage('spak', errMsg);
+        speak(errMsg);
+        setStatus('ready');
+        return;
+      }
+
+      const reply = data.content[0].text;
+      conversationHistory.push({ role: 'assistant', content: reply });
+      addMessage('spak', reply);
+      speak(reply);
+
+    } catch (err) {
+      document.getElementById('typing')?.remove();
+      const errMsg = "Connection issue. Check your internet.";
+      addMessage('spak', errMsg);
+      setStatus('ready');
+      console.error(err);
+    }
+  }
+
+  async function speak(text) {
+    if (isSpeaking) {
+      if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+      isSpeaking = false;
+    }
+
+    // ElevenLabs TTS
+    if (elevenKey) {
+      try {
+        setStatus('speaking');
+        isSpeaking = true;
+        const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${ELEVEN_VOICE_ID}`, {
+          method: 'POST',
+          headers: {
+            'xi-api-key': elevenKey,
+            'Content-Type': 'application/json',
+            'Accept': 'audio/mpeg'
+          },
+          body: JSON.stringify({
+            text,
+            model_id: 'eleven_turbo_v2',
+            voice_settings: { stability: 0.5, similarity_boost: 0.75, style: 0.3, use_speaker_boost: true }
+          })
+        });
+
+        if (!res.ok) throw new Error('ElevenLabs error');
+
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        currentAudio = new Audio(url);
+        currentAudio.onended = () => { isSpeaking = false; setStatus('ready'); URL.revokeObjectURL(url); };
+        currentAudio.onerror = () => { isSpeaking = false; setStatus('ready'); };
+        currentAudio.play();
+        return;
+      } catch (err) {
+        console.error('ElevenLabs failed, falling back to browser TTS:', err);
+      }
+    }
+
+    // Fallback: browser TTS
+    const synth = window.speechSynthesis;
+    synth.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 1.05;
+    utterance.pitch = 1.0;
+    const voices = synth.getVoices();
+    const preferred = voices.find(v => v.name.includes('Google') && v.lang.startsWith('en'))
+      || voices.find(v => v.lang.startsWith('en'));
+    if (preferred) utterance.voice = preferred;
+    utterance.onstart = () => { isSpeaking = true; setStatus('speaking'); };
+    utterance.onend = () => { isSpeaking = false; setStatus('ready'); };
+    synth.speak(utterance);
+  }
+
+  function addMessage(role, text) {
+    const area = document.getElementById('transcriptArea');
+    const msg = document.createElement('div');
+    msg.className = `message ${role}`;
+    msg.innerHTML = `
+      <div>
+        <div class="msg-label">${role === 'user' ? 'you' : 'spak'}</div>
+        <div class="msg-bubble">${text}</div>
+      </div>
+    `;
+    area.appendChild(msg);
+    scrollDown();
+  }
+
+  function scrollDown() {
+    const area = document.getElementById('transcriptArea');
+    area.scrollTop = area.scrollHeight;
+  }
+
+  function clearConversation() {
+    document.getElementById('transcriptArea').innerHTML = '';
+    conversationHistory = [];
+    if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+    window.speechSynthesis?.cancel();
+    isSpeaking = false;
+    setStatus('ready');
+  }
+
+  // Init — check saved keys
+  if (apiKey) {
+    elevenKey = localStorage.getItem('spak_eleven_key') || '';
+    document.getElementById('setupOverlay').style.display = 'none';
+    setStatus('ready');
+    initSpeechRecognition();
+    setTimeout(() => greet(), 500);
+  }
+</script>
+</body>
+</html>

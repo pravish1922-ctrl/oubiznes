@@ -1,0 +1,1220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SPAK · QA Test Plan</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Cabinet+Grotesk:wght@400;500;700;800&display=swap');
+
+  :root {
+    --bg: #f7f6f3;
+    --surface: #ffffff;
+    --surface2: #f0ede8;
+    --border: #e2ddd8;
+    --text: #1a1814;
+    --text-dim: #6b6560;
+    --text-muted: #a09b96;
+    --ok: #16a34a;
+    --ok-bg: #f0fdf4;
+    --ok-border: #bbf7d0;
+    --ko: #dc2626;
+    --ko-bg: #fef2f2;
+    --ko-border: #fecaca;
+    --warn: #d97706;
+    --warn-bg: #fffbeb;
+    --warn-border: #fde68a;
+    --pending-bg: #f8f8f6;
+    --pending-border: #e2ddd8;
+    --accent: #2d2926;
+    --accent2: #8b5cf6;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Cabinet Grotesk', sans-serif;
+    min-height: 100vh;
+    padding: 0 0 80px 0;
+  }
+
+  /* Header */
+  .header {
+    background: var(--accent);
+    color: white;
+    padding: 24px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .header-left { display: flex; flex-direction: column; gap: 4px; }
+
+  .logo {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    letter-spacing: 0.2em;
+    color: rgba(255,255,255,0.5);
+    text-transform: uppercase;
+  }
+
+  .title {
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+
+  .header-right {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .btn {
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s ease;
+    font-weight: 500;
+  }
+
+  .btn-ghost {
+    background: rgba(255,255,255,0.1);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.2);
+  }
+
+  .btn-ghost:hover { background: rgba(255,255,255,0.2); }
+
+  .btn-primary {
+    background: white;
+    color: var(--accent);
+  }
+
+  .btn-primary:hover { background: #f0ede8; }
+
+  /* Summary bar */
+  .summary {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 40px;
+    display: flex;
+    gap: 32px;
+    align-items: center;
+  }
+
+  .summary-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+  }
+
+  .summary-count {
+    font-size: 20px;
+    font-weight: 800;
+    font-family: 'Cabinet Grotesk', sans-serif;
+  }
+
+  .summary-label { color: var(--text-dim); }
+
+  .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .dot-ok { background: var(--ok); }
+  .dot-ko { background: var(--ko); }
+  .dot-warn { background: var(--warn); }
+  .dot-pending { background: var(--text-muted); }
+
+  /* Progress bar */
+  .progress-bar {
+    flex: 1;
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+    display: flex;
+  }
+
+  .progress-segment {
+    height: 100%;
+    transition: width 0.4s ease;
+  }
+
+  /* Main content */
+  .content { padding: 32px 40px; max-width: 1400px; }
+
+  /* Tool section */
+  .tool-section {
+    margin-bottom: 32px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .tool-header {
+    padding: 16px 20px;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .tool-header:hover { background: #ebe7e2; }
+
+  .tool-name {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .tool-badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 400;
+    letter-spacing: 0.05em;
+  }
+
+  .tool-stats {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  .stat-pill {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 100px;
+    font-size: 11px;
+  }
+
+  /* Table */
+  .test-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .test-table th {
+    padding: 10px 16px;
+    text-align: left;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    font-weight: 400;
+  }
+
+  .test-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+    font-size: 13px;
+  }
+
+  .test-table tr:last-child td { border-bottom: none; }
+  .test-table tr:hover td { background: #faf9f7; }
+
+  .test-id {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+
+  .test-name { font-weight: 600; font-size: 13px; }
+  .test-desc { color: var(--text-dim); font-size: 12px; margin-top: 2px; line-height: 1.5; }
+  .test-data { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--accent2); line-height: 1.6; }
+  .test-expected { font-size: 12px; color: var(--text-dim); line-height: 1.5; }
+
+  /* RAG buttons */
+  .rag-group {
+    display: flex;
+    gap: 4px;
+    flex-wrap: nowrap;
+  }
+
+  .rag-btn {
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+    font-weight: 500;
+  }
+
+  .rag-btn-ok {
+    background: var(--ok-bg);
+    border-color: var(--ok-border);
+    color: var(--ok);
+  }
+
+  .rag-btn-ok:hover, .rag-btn-ok.active {
+    background: var(--ok);
+    color: white;
+    border-color: var(--ok);
+  }
+
+  .rag-btn-ko {
+    background: var(--ko-bg);
+    border-color: var(--ko-border);
+    color: var(--ko);
+  }
+
+  .rag-btn-ko:hover, .rag-btn-ko.active {
+    background: var(--ko);
+    color: white;
+    border-color: var(--ko);
+  }
+
+  .rag-btn-warn {
+    background: var(--warn-bg);
+    border-color: var(--warn-border);
+    color: var(--warn);
+  }
+
+  .rag-btn-warn:hover, .rag-btn-warn.active {
+    background: var(--warn);
+    color: white;
+    border-color: var(--warn);
+  }
+
+  /* Status badge */
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 100px;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+  }
+
+  .status-ok { background: var(--ok-bg); color: var(--ok); border: 1px solid var(--ok-border); }
+  .status-ko { background: var(--ko-bg); color: var(--ko); border: 1px solid var(--ko-border); }
+  .status-warn { background: var(--warn-bg); color: var(--warn); border: 1px solid var(--warn-border); }
+  .status-pending { background: var(--pending-bg); color: var(--text-muted); border: 1px solid var(--pending-border); }
+
+  /* Comments */
+  .comment-input {
+    width: 100%;
+    min-width: 160px;
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-family: 'Cabinet Grotesk', sans-serif;
+    font-size: 12px;
+    color: var(--text);
+    background: var(--bg);
+    resize: none;
+    outline: none;
+    transition: border-color 0.15s;
+    min-height: 40px;
+  }
+
+  .comment-input:focus { border-color: var(--accent2); }
+  .comment-input::placeholder { color: var(--text-muted); }
+
+  /* Add test case */
+  .add-test-row td {
+    padding: 8px 16px;
+    background: #faf9f7;
+  }
+
+  .add-test-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .add-test-btn:hover {
+    border-color: var(--accent2);
+    color: var(--accent2);
+    background: rgba(139,92,246,0.04);
+  }
+
+  /* Modal */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+  }
+
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--surface);
+    border-radius: 16px;
+    padding: 32px;
+    width: 100%;
+    max-width: 520px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.15);
+  }
+
+  .modal-title {
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+
+  .modal-field { display: flex; flex-direction: column; gap: 6px; }
+
+  .modal-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .modal-input, .modal-select, .modal-textarea {
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-family: 'Cabinet Grotesk', sans-serif;
+    font-size: 13px;
+    color: var(--text);
+    background: var(--bg);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .modal-input:focus, .modal-select:focus, .modal-textarea:focus {
+    border-color: var(--accent2);
+  }
+
+  .modal-textarea { resize: vertical; min-height: 80px; }
+
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+
+  .btn-cancel {
+    background: var(--surface2);
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+  }
+
+  .btn-save {
+    background: var(--accent);
+    color: white;
+  }
+
+  .btn-save:hover { background: #3d3530; }
+
+  /* Collapsed state */
+  .tool-body.collapsed { display: none; }
+
+  .chevron {
+    transition: transform 0.2s ease;
+    color: var(--text-muted);
+  }
+
+  .tool-header.collapsed .chevron { transform: rotate(-90deg); }
+
+  /* Col widths */
+  .col-id { width: 60px; }
+  .col-test { width: 22%; }
+  .col-data { width: 20%; }
+  .col-expected { width: 20%; }
+  .col-status { width: 110px; }
+  .col-rag { width: 160px; }
+  .col-comment { width: 18%; }
+
+  /* Export timestamp */
+  .footer-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 12px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .saved-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--ok);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .saved-indicator.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-left">
+    <div class="logo">SPAK · OuBiznes.mu</div>
+    <div class="title">QA Test Plan — v1.0</div>
+  </div>
+  <div class="header-right">
+    <button class="btn btn-ghost" onclick="resetAll()">Reset All</button>
+    <button class="btn btn-ghost" onclick="exportCSV()">Export CSV</button>
+    <button class="btn btn-primary" onclick="saveAll()">Save Progress</button>
+  </div>
+</div>
+
+<!-- Summary -->
+<div class="summary">
+  <div class="summary-item">
+    <span class="summary-count" id="totalCount">0</span>
+    <span class="summary-label">total tests</span>
+  </div>
+  <div class="summary-item">
+    <div class="dot dot-ok"></div>
+    <span class="summary-count" id="okCount" style="color:var(--ok)">0</span>
+    <span class="summary-label">OK</span>
+  </div>
+  <div class="summary-item">
+    <div class="dot dot-ko"></div>
+    <span class="summary-count" id="koCount" style="color:var(--ko)">0</span>
+    <span class="summary-label">KO</span>
+  </div>
+  <div class="summary-item">
+    <div class="dot dot-warn"></div>
+    <span class="summary-count" id="warnCount" style="color:var(--warn)">0</span>
+    <span class="summary-label">Good Enough</span>
+  </div>
+  <div class="summary-item">
+    <div class="dot dot-pending"></div>
+    <span class="summary-count" id="pendingCount">0</span>
+    <span class="summary-label">Pending</span>
+  </div>
+  <div class="progress-bar" style="margin-left:16px">
+    <div class="progress-segment" id="prog-ok" style="background:var(--ok);width:0%"></div>
+    <div class="progress-segment" id="prog-warn" style="background:var(--warn);width:0%"></div>
+    <div class="progress-segment" id="prog-ko" style="background:var(--ko);width:0%"></div>
+  </div>
+</div>
+
+<!-- Content -->
+<div class="content" id="mainContent"></div>
+
+<!-- Footer -->
+<div class="footer-bar">
+  <span id="lastSaved">Not saved yet — click Save Progress</span>
+  <div class="saved-indicator" id="savedIndicator">
+    ✓ Saved to localStorage
+  </div>
+  <span>Wednesday: connect to Supabase for cross-device sync</span>
+</div>
+
+<!-- Add Test Modal -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-title">Add Test Case</div>
+    <input type="hidden" id="modalToolId">
+    <div class="modal-field">
+      <div class="modal-label">Tool</div>
+      <select class="modal-select" id="modalTool"></select>
+    </div>
+    <div class="modal-field">
+      <div class="modal-label">Test Name</div>
+      <input class="modal-input" id="modalName" placeholder="e.g. Edge case — empty input">
+    </div>
+    <div class="modal-field">
+      <div class="modal-label">Test Data / Steps</div>
+      <textarea class="modal-textarea" id="modalData" placeholder="What to enter or do..."></textarea>
+    </div>
+    <div class="modal-field">
+      <div class="modal-label">Expected Result</div>
+      <textarea class="modal-textarea" id="modalExpected" placeholder="What should happen..."></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-save" onclick="saveNewTest()">Add Test →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const TOOLS = [
+  {
+    id: 'BSA',
+    name: 'Business Structure Advisor',
+    category: 'Starting a Business',
+    tests: [
+      {
+        id: 'BSA-01',
+        name: 'Sole Trader',
+        data: 'Selling handmade jewellery online\nSolo, no employees\nRevenue < Rs 500k',
+        expected: 'Sole trader recommendation + MRA registration steps'
+      },
+      {
+        id: 'BSA-02',
+        name: 'Partnership',
+        data: 'Opening restaurant with a friend\n2 partners, 3 employees\nRevenue Rs 1-3M',
+        expected: 'Partnership or Ltd recommendation with pros/cons'
+      },
+      {
+        id: 'BSA-03',
+        name: 'Ltd Company',
+        data: 'Tech startup seeking investment\n5 co-founders\nRevenue Rs 10M+',
+        expected: 'Private Ltd + BOI guidance mentioned'
+      },
+      {
+        id: 'BSA-04',
+        name: 'Empty form submission',
+        data: 'Submit with no inputs',
+        expected: 'Clean error message, no crash'
+      }
+    ]
+  },
+  {
+    id: 'BRN',
+    name: 'BRN Lookup',
+    category: 'Starting a Business',
+    tests: [
+      {
+        id: 'BRN-01',
+        name: 'Known large company',
+        data: 'Search: Rogers',
+        expected: 'Real BRN returned, company details shown'
+      },
+      {
+        id: 'BRN-02',
+        name: 'Known retail brand',
+        data: 'Search: Jumbo',
+        expected: 'Results returned with BRN'
+      },
+      {
+        id: 'BRN-03',
+        name: 'Non-existent company',
+        data: 'Search: XYZABC123NotReal',
+        expected: 'Clean not found message, no crash'
+      },
+      {
+        id: 'BRN-04',
+        name: 'Partial name search',
+        data: 'Search: Air',
+        expected: 'Multiple results including Air Mauritius'
+      }
+    ]
+  },
+  {
+    id: 'BPG',
+    name: 'Business Plan Generator',
+    category: 'Starting a Business',
+    tests: [
+      {
+        id: 'BPG-01',
+        name: 'Food business',
+        data: 'Street food stall — Mauritian street food\nLocation: Port Louis\nTarget: Local workers lunch crowd\nStage: Just starting',
+        expected: 'Full plan with executive summary, market analysis, financials — Mauritius-specific'
+      },
+      {
+        id: 'BPG-02',
+        name: 'Tech startup',
+        data: 'Mobile delivery app for Mauritius\nOnline, island-wide\nSeed funding stage',
+        expected: 'Tech-focused plan with local market data, mentions SMEDA/EDB'
+      },
+      {
+        id: 'BPG-03',
+        name: 'Output copy/download',
+        data: 'Generate any plan then try to copy or download',
+        expected: 'Output is copyable or downloadable without error'
+      }
+    ]
+  },
+  {
+    id: 'CC',
+    name: 'Compliance Calendar',
+    category: 'Compliance & Operations',
+    tests: [
+      {
+        id: 'CC-01',
+        name: 'Calendar loads',
+        data: 'Open tool — no inputs needed',
+        expected: '2026 MRA deadlines visible, loads under 3 seconds'
+      },
+      {
+        id: 'CC-02',
+        name: 'Download calendar',
+        data: 'Click download / add to calendar button',
+        expected: '.ics file downloads, opens in calendar app'
+      },
+      {
+        id: 'CC-03',
+        name: 'Key dates present',
+        data: 'Check: VAT return, PAYE monthly, CSG quarterly, annual return',
+        expected: 'All major MRA 2026 deadlines present and accurate'
+      }
+    ]
+  },
+  {
+    id: 'VAT',
+    name: 'VAT Calculator',
+    category: 'Compliance & Operations',
+    tests: [
+      {
+        id: 'VAT-01',
+        name: 'Standard rate',
+        data: 'Amount: Rs 10,000 — Standard rated',
+        expected: 'VAT = Rs 1,500 · Total = Rs 11,500'
+      },
+      {
+        id: 'VAT-02',
+        name: 'Zero rated',
+        data: 'Amount: Rs 5,000 — Zero rated',
+        expected: 'VAT = Rs 0 · Total = Rs 5,000'
+      },
+      {
+        id: 'VAT-03',
+        name: 'Exempt',
+        data: 'Amount: Rs 20,000 — Exempt',
+        expected: 'VAT = Rs 0 · clearly marked exempt'
+      },
+      {
+        id: 'VAT-04',
+        name: 'Zero amount edge case',
+        data: 'Amount: Rs 0',
+        expected: 'No crash · clean result shown'
+      },
+      {
+        id: 'VAT-05',
+        name: 'Large amount',
+        data: 'Amount: Rs 10,000,000',
+        expected: 'Correct calculation · no formatting error'
+      }
+    ]
+  },
+  {
+    id: 'PAYE',
+    name: 'PAYE Calculator',
+    category: 'Compliance & Operations',
+    tests: [
+      {
+        id: 'PAYE-01',
+        name: 'Minimum wage',
+        data: 'Gross: Rs 16,500 · No dependents',
+        expected: 'CSG + NSF deductions shown · net pay calculated correctly'
+      },
+      {
+        id: 'PAYE-02',
+        name: 'Middle income',
+        data: 'Gross: Rs 50,000 · 2 dependents',
+        expected: 'PAYE applied · full breakdown shown'
+      },
+      {
+        id: 'PAYE-03',
+        name: 'High income',
+        data: 'Gross: Rs 200,000 · No dependents',
+        expected: 'Higher PAYE band applied correctly'
+      },
+      {
+        id: 'PAYE-04',
+        name: 'Employer view',
+        data: 'Gross: Rs 50,000 — check employer view',
+        expected: 'Employer CSG + NSF contributions shown separately'
+      }
+    ]
+  },
+  {
+    id: 'GF',
+    name: 'Grants Finder',
+    category: 'Funding & Growth',
+    tests: [
+      {
+        id: 'GF-01',
+        name: 'Manufacturing SME',
+        data: 'Type: Manufacturing · Existing 2 years · 8 employees',
+        expected: 'SMEDA + EDB grants listed with eligibility criteria'
+      },
+      {
+        id: 'GF-02',
+        name: 'IT startup',
+        data: 'Type: IT services · Startup 6 months',
+        expected: 'Relevant grants shown · TINNS if applicable'
+      },
+      {
+        id: 'GF-03',
+        name: 'Agriculture',
+        data: 'Type: Organic farming',
+        expected: 'Agricultural grants shown · ICDS if applicable'
+      },
+      {
+        id: 'GF-04',
+        name: 'Source links',
+        data: 'Check any result for links to sources',
+        expected: 'Links to SMEDA/EDB/DBM pages present and working'
+      }
+    ]
+  },
+  {
+    id: 'GAG',
+    name: 'Grant Application Generator',
+    category: 'Funding & Growth',
+    tests: [
+      {
+        id: 'GAG-01',
+        name: 'SMEDA Youth grant',
+        data: 'Grant: SMEDA Youth Entrepreneurship\nBusiness: Graphic design studio\nOwner: 26 years old',
+        expected: 'Full professional application · Mauritius-specific language · ready to submit'
+      },
+      {
+        id: 'GAG-02',
+        name: 'EDB investment grant',
+        data: 'Grant: EDB Investment Incentive\nBusiness: Tech startup',
+        expected: 'Professional application · correct EDB terminology used'
+      },
+      {
+        id: 'GAG-03',
+        name: 'Output quality',
+        data: 'Check output for generic vs local content',
+        expected: 'No generic global content · all references are Mauritius-specific'
+      }
+    ]
+  },
+  {
+    id: 'CROSS',
+    name: 'Cross-Cutting Tests',
+    category: 'All Tools',
+    tests: [
+      {
+        id: 'CROSS-01',
+        name: 'Mobile responsive',
+        data: 'Open oubiznes.mu on phone browser · check each tool',
+        expected: 'All tools display correctly on mobile · no horizontal scroll'
+      },
+      {
+        id: 'CROSS-02',
+        name: 'Loading speed',
+        data: 'Open each tool and time load',
+        expected: 'Each tool loads under 3 seconds'
+      },
+      {
+        id: 'CROSS-03',
+        name: 'Empty form handling',
+        data: 'Submit empty form on each tool',
+        expected: 'No crash · clear error or validation message'
+      },
+      {
+        id: 'CROSS-04',
+        name: 'Footer subscribe',
+        data: 'Enter test email in footer subscribe · check Supabase subscribers table',
+        expected: 'Email appears in Supabase within 30 seconds'
+      },
+      {
+        id: 'CROSS-05',
+        name: 'Voting system',
+        data: 'Vote on a Coming Next tool · check Supabase feature_votes table',
+        expected: 'Vote recorded in Supabase · count updates on page'
+      },
+      {
+        id: 'CROSS-06',
+        name: 'SPAK footer badge',
+        data: 'Check footer on all pages',
+        expected: '"Powered by SPAK" visible on all pages'
+      },
+      {
+        id: 'CROSS-07',
+        name: 'Agent QA run',
+        data: 'Check cron-job.org history Monday · did QA Tester run at 09:00 MU?',
+        expected: 'Run logged in cron-job.org · new row in agent_runs Supabase'
+      },
+      {
+        id: 'CROSS-08',
+        name: 'Morning brief delivery',
+        data: 'Check WhatsApp at 07:00 MU Tuesday',
+        expected: 'Brief received on WhatsApp with daily summary'
+      }
+    ]
+  }
+];
+
+// State
+let results = JSON.parse(localStorage.getItem('spak_qa_results') || '{}');
+let customTests = JSON.parse(localStorage.getItem('spak_qa_custom') || '[]');
+
+function getAllTests() {
+  const all = [];
+  TOOLS.forEach(tool => {
+    tool.tests.forEach(t => all.push({ ...t, toolId: tool.id }));
+  });
+  customTests.forEach(t => all.push(t));
+  return all;
+}
+
+function updateSummary() {
+  const all = getAllTests();
+  const total = all.length;
+  let ok = 0, ko = 0, warn = 0, pending = 0;
+
+  all.forEach(t => {
+    const r = results[t.id];
+    if (!r || !r.status) pending++;
+    else if (r.status === 'ok') ok++;
+    else if (r.status === 'ko') ko++;
+    else if (r.status === 'warn') warn++;
+  });
+
+  document.getElementById('totalCount').textContent = total;
+  document.getElementById('okCount').textContent = ok;
+  document.getElementById('koCount').textContent = ko;
+  document.getElementById('warnCount').textContent = warn;
+  document.getElementById('pendingCount').textContent = pending;
+
+  const pOk = total ? (ok / total * 100).toFixed(1) : 0;
+  const pWarn = total ? (warn / total * 100).toFixed(1) : 0;
+  const pKo = total ? (ko / total * 100).toFixed(1) : 0;
+
+  document.getElementById('prog-ok').style.width = pOk + '%';
+  document.getElementById('prog-warn').style.width = pWarn + '%';
+  document.getElementById('prog-ko').style.width = pKo + '%';
+}
+
+function clearRAG(testId) {
+  if (!results[testId]) return;
+  delete results[testId].status;
+
+  const badge = document.getElementById('badge-' + testId);
+  if (badge) {
+    badge.className = 'status-badge status-pending';
+    badge.innerHTML = '● Pending';
+  }
+
+  ['ok', 'ko', 'warn'].forEach(s => {
+    const btn = document.getElementById('rag-' + s + '-' + testId);
+    if (btn) btn.classList.remove('active');
+  });
+
+  updateSummary();
+  const toolId = testId.includes('CROSS') ? 'CROSS' : testId.split('-')[0];
+  updateToolStats(toolId);
+}
+
+function setRAG(testId, status) {
+  if (!results[testId]) results[testId] = {};
+  results[testId].status = status;
+
+  // Update status badge
+  const badge = document.getElementById('badge-' + testId);
+  if (badge) {
+    badge.className = 'status-badge status-' + status;
+    badge.innerHTML = status === 'ok' ? '● OK' : status === 'ko' ? '● KO' : '● Good Enough';
+  }
+
+  // Update buttons
+  ['ok', 'ko', 'warn'].forEach(s => {
+    const btn = document.getElementById('rag-' + s + '-' + testId);
+    if (btn) btn.classList.toggle('active', s === status);
+  });
+
+  updateSummary();
+
+  // Update tool header stats
+  updateToolStats(testId.split('-')[0] === 'CROSS' ? 'CROSS' : testId.split('-')[0]);
+}
+
+function updateToolStats(toolId) {
+  const tool = [...TOOLS, { id: 'CUSTOM', tests: customTests }].find(t => t.id === toolId);
+  if (!tool) return;
+
+  const tests = tool.tests.filter(t => t.id.startsWith(toolId) || t.toolId === toolId);
+  let ok = 0, ko = 0, warn = 0;
+  tests.forEach(t => {
+    const r = results[t.id];
+    if (r?.status === 'ok') ok++;
+    else if (r?.status === 'ko') ko++;
+    else if (r?.status === 'warn') warn++;
+  });
+
+  const statsEl = document.getElementById('stats-' + toolId);
+  if (statsEl) {
+    statsEl.innerHTML = `
+      ${ok > 0 ? `<span class="stat-pill" style="background:var(--ok-bg);color:var(--ok)">✓ ${ok} OK</span>` : ''}
+      ${warn > 0 ? `<span class="stat-pill" style="background:var(--warn-bg);color:var(--warn)">~ ${warn} GE</span>` : ''}
+      ${ko > 0 ? `<span class="stat-pill" style="background:var(--ko-bg);color:var(--ko)">✗ ${ko} KO</span>` : ''}
+    `;
+  }
+}
+
+function saveComment(testId, value) {
+  if (!results[testId]) results[testId] = {};
+  results[testId].comment = value;
+}
+
+function renderTools() {
+  const container = document.getElementById('mainContent');
+  const allTools = [...TOOLS];
+
+  // Add custom tests section if any
+  if (customTests.length > 0) {
+    allTools.push({ id: 'CUSTOM', name: 'Custom Tests', category: 'Added by Pravish', tests: customTests });
+  }
+
+  container.innerHTML = allTools.map(tool => `
+    <div class="tool-section">
+      <div class="tool-header" onclick="toggleSection('${tool.id}')">
+        <div class="tool-name">
+          <span>${tool.name}</span>
+          <span class="tool-badge" style="background:var(--surface2);color:var(--text-dim);border:1px solid var(--border)">${tool.category}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:16px">
+          <div class="tool-stats" id="stats-${tool.id}"></div>
+          <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </div>
+      </div>
+      <div class="tool-body" id="body-${tool.id}">
+        <table class="test-table">
+          <thead>
+            <tr>
+              <th class="col-id">ID</th>
+              <th class="col-test">Test</th>
+              <th class="col-data">Test Data / Steps</th>
+              <th class="col-expected">Expected Result</th>
+              <th class="col-status">Status</th>
+              <th class="col-rag">RAG</th>
+              <th class="col-comment">Comments</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-${tool.id}">
+            ${tool.tests.map(test => renderTestRow(test)).join('')}
+          </tbody>
+          <tfoot>
+            <tr class="add-test-row">
+              <td colspan="7">
+                <button class="add-test-btn" onclick="openModal('${tool.id}')">
+                  + Add test case
+                </button>
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  `).join('');
+
+  // Restore values
+  getAllTests().forEach(test => {
+    const r = results[test.id];
+    if (r?.status) setRAG(test.id, r.status);
+    if (r?.comment) {
+      const el = document.getElementById('comment-' + test.id);
+      if (el) el.value = r.comment;
+    }
+  });
+
+  updateSummary();
+  allTools.forEach(t => updateToolStats(t.id));
+}
+
+function renderTestRow(test) {
+  return `
+    <tr>
+      <td class="col-id"><span class="test-id">${test.id}</span></td>
+      <td class="col-test">
+        <div class="test-name">${test.name}</div>
+      </td>
+      <td class="col-data"><div class="test-data">${(test.data || '').replace(/\n/g, '<br>')}</div></td>
+      <td class="col-expected"><div class="test-expected">${test.expected || ''}</div></td>
+      <td class="col-status">
+        <span class="status-badge status-pending" id="badge-${test.id}">● Pending</span>
+      </td>
+      <td class="col-rag">
+        <div class="rag-group">
+          <button class="rag-btn rag-btn-ok" id="rag-ok-${test.id}" onclick="setRAG('${test.id}','ok')">OK</button>
+          <button class="rag-btn rag-btn-warn" id="rag-warn-${test.id}" onclick="setRAG('${test.id}','warn')">~GE</button>
+          <button class="rag-btn rag-btn-ko" id="rag-ko-${test.id}" onclick="setRAG('${test.id}','ko')">KO</button>
+          <button class="rag-btn" id="rag-clear-${test.id}" onclick="clearRAG('${test.id}')" style="background:var(--surface2);border-color:var(--border);color:var(--text-muted)" title="Clear status">✕</button>
+        </div>
+      </td>
+      <td class="col-comment">
+        <textarea 
+          class="comment-input" 
+          id="comment-${test.id}"
+          placeholder="Notes for discussion..."
+          onblur="saveComment('${test.id}', this.value)"
+        ></textarea>
+      </td>
+    </tr>
+  `;
+}
+
+function toggleSection(toolId) {
+  const body = document.getElementById('body-' + toolId);
+  const header = body.previousElementSibling;
+  body.classList.toggle('collapsed');
+  header.classList.toggle('collapsed');
+}
+
+function openModal(toolId) {
+  // Populate tool select
+  const sel = document.getElementById('modalTool');
+  sel.innerHTML = TOOLS.map(t => `<option value="${t.id}" ${t.id === toolId ? 'selected' : ''}>${t.name}</option>`).join('');
+  document.getElementById('modalOverlay').classList.add('open');
+  document.getElementById('modalName').focus();
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('open');
+  document.getElementById('modalName').value = '';
+  document.getElementById('modalData').value = '';
+  document.getElementById('modalExpected').value = '';
+}
+
+function saveNewTest() {
+  const toolId = document.getElementById('modalTool').value;
+  const name = document.getElementById('modalName').value.trim();
+  const data = document.getElementById('modalData').value.trim();
+  const expected = document.getElementById('modalExpected').value.trim();
+
+  if (!name) { document.getElementById('modalName').style.borderColor = 'var(--ko)'; return; }
+
+  const tool = TOOLS.find(t => t.id === toolId);
+  const existingTests = tool ? tool.tests : customTests;
+  const prefix = toolId;
+  const num = String(existingTests.length + 1).padStart(2, '0');
+  const newId = `${prefix}-${num}X`;
+
+  const newTest = { id: newId, name, data, expected, toolId, custom: true };
+  customTests.push(newTest);
+  localStorage.setItem('spak_qa_custom', JSON.stringify(customTests));
+
+  closeModal();
+  renderTools();
+}
+
+function saveAll() {
+  // Save all comments first
+  getAllTests().forEach(test => {
+    const el = document.getElementById('comment-' + test.id);
+    if (el) saveComment(test.id, el.value);
+  });
+
+  localStorage.setItem('spak_qa_results', JSON.stringify(results));
+
+  const now = new Date().toLocaleString('en-MU', { timeZone: 'Indian/Mauritius' });
+  document.getElementById('lastSaved').textContent = `Last saved: ${now} MU`;
+
+  const indicator = document.getElementById('savedIndicator');
+  indicator.classList.add('show');
+  setTimeout(() => indicator.classList.remove('show'), 2000);
+}
+
+function resetAll() {
+  if (!confirm('Reset all RAG statuses and comments? Custom test cases will be kept.')) return;
+  results = {};
+  localStorage.setItem('spak_qa_results', JSON.stringify(results));
+  renderTools();
+}
+
+function exportCSV() {
+  saveAll();
+  const rows = [['ID', 'Tool', 'Test Name', 'Test Data', 'Expected', 'Status', 'Comment', 'Date']];
+  const now = new Date().toLocaleString('en-MU', { timeZone: 'Indian/Mauritius' });
+
+  TOOLS.forEach(tool => {
+    tool.tests.forEach(test => {
+      const r = results[test.id] || {};
+      rows.push([
+        test.id,
+        tool.name,
+        test.name,
+        `"${(test.data || '').replace(/"/g, '""').replace(/\n/g, ' ')}"`,
+        `"${(test.expected || '').replace(/"/g, '""')}"`,
+        r.status || 'pending',
+        `"${(r.comment || '').replace(/"/g, '""')}"`,
+        r.status ? now : ''
+      ]);
+    });
+  });
+
+  customTests.forEach(test => {
+    const r = results[test.id] || {};
+    rows.push([
+      test.id, 'Custom', test.name,
+      `"${(test.data || '').replace(/"/g, '""').replace(/\n/g, ' ')}"`,
+      `"${(test.expected || '').replace(/"/g, '""')}"`,
+      r.status || 'pending',
+      `"${(r.comment || '').replace(/"/g, '""')}"`,
+      r.status ? now : ''
+    ]);
+  });
+
+  const csv = rows.map(r => r.join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `spak-qa-${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// Init
+renderTools();
+
+// Auto-save every 2 minutes
+setInterval(saveAll, 120000);
+</script>
+</body>
+</html>
